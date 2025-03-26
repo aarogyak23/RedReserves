@@ -1,0 +1,57 @@
+.HomeImage {
+  width: 1600px;
+  height: 650px;
+  display: block;
+  margin: 0;
+  padding: 0;
+  object-fit: cover;
+  position: relative;
+  z-index: 0;
+  opacity: 90%;
+  clip-path: polygon(0 0, 59% 0, 60% 0%, 100% 50%, 60% 100%, 59% 100%, 0 100%);
+}
+
+/* Banner Text */
+.HomebannerText {
+  position: absolute;
+  left: 50%;
+  top: 450px;
+  transform: translate(-50%, -50%);
+  font-size: 3rem;
+  font-weight: 500;
+  color: #050505;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  font-family: "Poppins", serif;
+  z-index: 1;
+  text-align: center;
+}
+
+.HomebannerText span {
+  color: #fbfafa;
+}
+.HomebannerText p {
+  font-weight: 300;
+  font-size: 20px;
+}
+
+.bannerText p {
+  font-size: 18px;
+  font-weight: 400;
+  font-family: "Poppins", serif;
+}
+.HomeButton {
+  width: 20%;
+  padding: 15px 20px;
+  background-color: #ffffff;
+  color: rgb(206, 21, 21);
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: "Poppins", serif;
+  font-size: 16px;
+  margin-top: 20px;
+}
+button:hover {
+  background-color: #a3181f;
+  color: white; /* Darker red on hover */
+}

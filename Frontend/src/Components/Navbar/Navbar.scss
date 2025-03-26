@@ -1,0 +1,80 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 2px 2%;
+  background: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+.logoImage {
+  width: 100px;
+  padding-left: 0.1rem;
+}
+
+.navbar a {
+  position: relative;
+  font-size: 14px;
+  color: #000;
+  margin-right: 60px;
+  font-family: "Poppins", serif;
+}
+.navbar a::before {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #ce2029;
+  transition: 0.3s;
+}
+.navbar a:hover::before {
+  width: 100%;
+}
+.navbar a:hover {
+  color: #ce2029;
+}
+
+.navButton {
+  color: #ce2029;
+  margin-right: 70px;
+  width: 95px;
+  border-radius: 20px;
+  cursor: pointer;
+  padding: 5px;
+  font-weight: 500;
+  font-family: "Poppins", serif;
+}
+.navButton:hover {
+  color: darkred;
+}
+
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  .username {
+    color: #333;
+    font-family: "Poppins", serif;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .navButton {
+    background-color: #ce2029;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+
+    &:hover {
+      background-color: darkred;
+    }
+  }
+}

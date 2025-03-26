@@ -1,0 +1,247 @@
+.aboutus-container {
+  width: 1500px;
+  height: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fdf7f7;
+  padding: 50px 50px;
+
+  .leader-section {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .title {
+      font-size: 52px;
+      font-weight: 500;
+      color: #b22222;
+      margin-bottom: 90px;
+      width: 100%;
+      align-items: center;
+      margin-left: 400px;
+    }
+    .content {
+      display: flex;
+      align-items: center;
+      gap: 50px;
+      text-align: center;
+      height: 200px;
+
+      .leader-image {
+        width: 300px;
+        height: auto;
+        border-radius: 8px;
+        padding-left: 20px;
+      }
+
+      .quote-container {
+        flex: 1;
+
+        .quote {
+          font-size: 18px;
+          font-weight: 400;
+          font-family: "Poppins", serif;
+          color: #333;
+          font-style: italic;
+          line-height: 1.6;
+        }
+
+        .leader-name {
+          margin-top: 10px;
+          font-size: 19px;
+          font-weight: 600;
+          color: #666;
+          font-family: "Poppins", serif;
+        }
+      }
+    }
+  }
+
+  .mission-section {
+    width: 1500px;
+    text-align: center;
+    background-color: #fdf0f0;
+    padding: 50px;
+    border-radius: 8px;
+    margin-top: 190px;
+
+    .mission-title {
+      font-size: 52px;
+      font-weight: 500;
+      color: #b22222;
+      margin-bottom: 20px;
+      margin-left: 100px;
+    }
+
+    .mission-text {
+      font-size: 18px;
+      color: #333;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      font-family: "Poppins", serif;
+    }
+
+    .mission-button {
+      background-color: #b22222;
+      width: 50%;
+      color: white;
+      font-size: 16px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .mission-button:hover {
+      background-color: #911a1a;
+    }
+  }
+}
+/* Team Section */
+.team-container {
+  position: relative;
+  width: 1500px;
+  display: block;
+  margin: 0 auto;
+}
+.Member-title {
+  font-size: 52px;
+  align-items: center;
+  margin-left: 280px;
+  color: #b22222;
+  font-weight: 500;
+}
+
+.team-member {
+  text-align: center;
+}
+
+.arrow {
+  font-size: 2rem;
+  color: rgb(9, 8, 8);
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.left-arrow {
+  left: 10px;
+}
+
+.right-arrow {
+  right: 10px;
+}
+
+.team-member img {
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 5px solid rgb(237, 100, 100);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease-in-out;
+  gap: 120px;
+}
+
+.team-member img:hover {
+  transform: scale(1.1);
+}
+
+.team-member h3 {
+  font-size: 18px;
+  margin-top: 5px;
+  font-weight: 500;
+  color: rgb(150, 54, 54);
+  font-family: "Poppins", serif;
+}
+
+.team-member p {
+  font-size: 14px;
+  font-weight: bold;
+  color: lightgray;
+  margin-top: -18px;
+}
+
+@media (min-width: 576px) {
+  .team-container .row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .team-member {
+    margin: 10px;
+    flex-basis: 33%;
+  }
+}
+
+@media (min-width: 768px) {
+  .team-container .row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .team-member {
+    margin: 15px;
+    flex-basis: 25%;
+  }
+}
+
+@media (max-width: 576px) {
+  .team-member {
+    flex-basis: 100%;
+  }
+}
+.gallery-section {
+  text-align: center;
+  padding: 50px 0;
+}
+
+.gallery-section h2 {
+  font-size: 52px;
+  font-weight: 500;
+  color: #b22222;
+  margin-bottom: 20px;
+  margin-left: 300px;
+}
+.gallery-container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+
+  .gallery-item {
+    width: calc(33.333% - 20px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    img {
+      width: 100%;
+      border-radius: 8px;
+    }
+  }
+}
+
+.all-photos-btn {
+  background-color: #b22222;
+  width: 10%;
+  color: white;
+  font-size: 16px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-top: 20px;
+}
+
+.all-photos-btn:hover {
+  background-color: #911a1a;
+}
