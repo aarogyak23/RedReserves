@@ -1,32 +1,63 @@
-import React from "react";
 import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { FaUser } from "react-icons/fa";
 import "./Navbar.scss";
-import { useNavigate } from "react-router-dom";
 
-export const Navbar = () => {
+const Navbar = () => {
   const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // Check if user is logged in
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      setUser(JSON.parse(userStr));
-    }
+    // Check authentication status when component mounts
+    const checkAuth = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+      setIsAuthenticated(!!token);
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+    };
+
+    // Initial check
+    checkAuth();
+
+    // Listen for auth state changes
+    const handleAuthChange = (event) => {
+      setIsAuthenticated(event.detail.isAuthenticated);
+      if (event.detail.isAuthenticated) {
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+      } else {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener("authStateChanged", handleAuthChange);
+    return () =>
+      window.removeEventListener("authStateChanged", handleAuthChange);
   }, []);
 
   const handleLogout = () => {
-    // Clear user data from localStorage
-    localStorage.removeItem("user");
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setIsAuthenticated(false);
     setUser(null);
+
+    // Dispatch auth state change event
+    const authEvent = new CustomEvent("authStateChanged", {
+      detail: { isAuthenticated: false },
+    });
+    window.dispatchEvent(authEvent);
+
     navigate("/login");
   };
 
   return (
     <header className="header">
       <img
-        onClick={() => navigate("/home")}
         className="logoImage"
         src="/src/assets/Screenshot 2025-02-18 at 11.16.18.png"
         alt="Logo"
@@ -35,20 +66,27 @@ export const Navbar = () => {
         <a onClick={() => navigate("/home")}>Home</a>
         <a onClick={() => navigate("/donateblood")}>Donate Blood</a>
         <a onClick={() => navigate("/requestblood")}>Request Blood</a>
-        <a onClick={() => navigate("/aboutus")}>About Us</a>
-        <a href="/home">Campaigns</a>
-        <a href="/home">Search</a>
-        {user ? (
-          <div className="user-section">
-            <span className="username">Welcome, {user.name}</span>
-            <span className="navButton" onClick={handleLogout}>
+        <a onClick={() => navigate("/about")}>About</a>
+        {isAuthenticated ? (
+          <>
+            <div className="user-section">
+              <a
+                onClick={() => navigate("/profile")}
+                className="profile-link"
+                title={user?.name}
+              >
+                <FaUser className="profile-icon" />
+              </a>
+            </div>
+            <a onClick={handleLogout} className="logout-link">
               Logout
-            </span>
-          </div>
+            </a>
+          </>
         ) : (
-          <span className="navButton active" onClick={() => navigate("/login")}>
-            Log In
-          </span>
+          <>
+            <a onClick={() => navigate("/login")}>Login</a>
+            <a onClick={() => navigate("/register")}>Register</a>
+          </>
         )}
       </nav>
     </header>

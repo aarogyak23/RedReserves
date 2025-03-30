@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Admin;
 use App\Models\User;
 use App\Models\BloodRequest;
+use App\Models\OrganizationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -55,25 +55,52 @@ class AdminController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
-            "email" => "required|email",
-            "password" => "required",
-        ]);
-
-        $admin = Admin::where("email", $request->email)->first();
-
-        if (!$admin || !Hash::check($request->password, $admin->password)) {
-            throw ValidationException::withMessages([
-                "email" => ["The provided credentials are incorrect."],
+        try {
+            $validator = Validator::make($request->all(), [
+                "email" => "required|email",
+                "password" => "required",
             ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = User::where("email", $request->email)
+                ->where("is_admin", true)
+                ->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Invalid credentials'
+                ], 401);
+            }
+
+            $token = $user->createToken("admin-token", ['admin'])->plainTextToken;
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Login successful',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_admin' => $user->is_admin
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Admin login error: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'An error occurred during login',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $token = $admin->createToken("admin-token")->plainTextToken;
-
-        return response()->json([
-            "token" => $token,
-            "message" => "Login successful",
-        ]);
     }
 
     /**
@@ -109,14 +136,35 @@ class AdminController extends Controller
     public function getUsers()
     {
         try {
-            $users = User::select('user_id', 'name', 'last_name', 'email', 'blood_group')
-                ->get();
+            $users = User::select(
+                'id',
+                'name',
+                'last_name',
+                'email',
+                'blood_group',
+                'phone_number',
+                'address',
+                'city',
+                'state',
+                'country',
+                'postal_code',
+                'is_organization',
+                'organization_name',
+                'created_at'
+            )
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-            return response()->json($users);
+            return response()->json([
+                'status' => true,
+                'data' => $users
+            ]);
         } catch (\Exception $e) {
             Log::error('Error fetching users: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Error fetching users'
+                'status' => false,
+                'message' => 'Error fetching users',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -154,24 +202,96 @@ class AdminController extends Controller
     public function getBloodRequests()
     {
         try {
-            $requests = BloodRequest::with('user:user_id,name,last_name')
-                ->select('id', 'user_id', 'blood_group', 'status', 'created_at')
-                ->get()
-                ->map(function ($request) {
-                    return [
-                        'id' => $request->id,
-                        'requester_name' => $request->user->name . ' ' . $request->user->last_name,
-                        'blood_group' => $request->blood_group,
-                        'status' => $request->status,
-                        'created_at' => $request->created_at
-                    ];
-                });
+            $requests = BloodRequest::with('user')
+                ->select(
+                    'id',
+                    'user_id',
+                    'first_name',
+                    'last_name',
+                    'email',
+                    'phone',
+                    'address',
+                    'date_of_birth',
+                    'gender',
+                    'requisition_form_path',
+                    'status',
+                    'admin_remarks',
+                    'created_at'
+                )
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-            return response()->json($requests);
+            return response()->json([
+                'status' => true,
+                'data' => $requests
+            ]);
         } catch (\Exception $e) {
             Log::error('Error fetching blood requests: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Error fetching blood requests'
+                'status' => false,
+                'message' => 'Error fetching blood requests',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/admin/organization-requests",
+     *     tags={"Admin"},
+     *     summary="Get all organization requests",
+     *     description="Retrieve a list of all organization requests with user details",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of organization requests retrieved successfully",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(
+     *                 @OA\Property(property="id", type="integer", example=1),
+     *                 @OA\Property(property="organization_name", type="string", example="Red Cross"),
+     *                 @OA\Property(property="status", type="string", enum={"pending", "approved", "rejected"}, example="pending"),
+     *                 @OA\Property(property="created_at", type="string", format="date-time")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Error fetching organization requests")
+     *         )
+     *     )
+     * )
+     */
+    public function getOrganizationRequests()
+    {
+        try {
+            $requests = OrganizationRequest::with('user')
+                ->select(
+                    'id',
+                    'user_id',
+                    'organization_name',
+                    'organization_phone',
+                    'organization_address',
+                    'pancard_image_path',
+                    'status',
+                    'rejection_reason',
+                    'created_at'
+                )
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $requests
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching organization requests: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Error fetching organization requests',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -240,7 +360,8 @@ class AdminController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'status' => 'required|in:pending,approved,rejected'
+                'status' => 'required|in:pending,approved,rejected',
+                'admin_remarks' => 'nullable|string'
             ]);
 
             if ($validator->fails()) {
@@ -252,18 +373,167 @@ class AdminController extends Controller
             }
 
             $bloodRequest = BloodRequest::findOrFail($id);
-            $bloodRequest->status = $request->status;
-            $bloodRequest->save();
+            $bloodRequest->update([
+                'status' => $request->status,
+                'admin_remarks' => $request->admin_remarks
+            ]);
 
             return response()->json([
                 'status' => true,
                 'message' => 'Blood request status updated successfully',
-                'request' => $bloodRequest
-            ], 200);
+                'data' => $bloodRequest
+            ]);
         } catch (\Exception $e) {
+            Log::error('Error updating blood request status: ' . $e->getMessage());
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to update blood request status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Put(
+     *     path="/api/admin/organization-requests/{id}/status",
+     *     tags={"Admin"},
+     *     summary="Update organization request status",
+     *     description="Update the status of an organization request",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="Organization request ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"status"},
+     *             @OA\Property(
+     *                 property="status",
+     *                 type="string",
+     *                 enum={"pending", "approved", "rejected"},
+     *                 example="approved"
+     *             ),
+     *             @OA\Property(
+     *                 property="rejection_reason",
+     *                 type="string",
+     *                 description="Reason for rejection if status is rejected",
+     *                 example="Invalid documentation"
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Status updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Organization request status updated successfully")
+     *         )
+     *     )
+     * )
+     */
+    public function updateOrganizationRequestStatus(Request $request, $id)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:pending,approved,rejected',
+                'rejection_reason' => 'nullable|string|required_if:status,rejected'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $orgRequest = OrganizationRequest::findOrFail($id);
+            
+            // Update organization request status
+            $orgRequest->update([
+                'status' => $request->status,
+                'rejection_reason' => $request->rejection_reason
+            ]);
+
+            // If approved, update user to organization
+            if ($request->status === 'approved') {
+                $orgRequest->user->update([
+                    'is_organization' => true,
+                    'organization_name' => $orgRequest->organization_name
+                ]);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Organization request status updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating organization request status: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update organization request status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateUser(Request $request, $id)
+    {
+        try {
+            $user = User::findOrFail($id);
+
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email,' . $id,
+                'phone_number' => 'nullable|string|max:20',
+                'address' => 'nullable|string|max:255',
+                'city' => 'nullable|string|max:100',
+                'state' => 'nullable|string|max:100',
+                'country' => 'nullable|string|max:100',
+                'postal_code' => 'nullable|string|max:20',
+                'blood_group' => 'required|string|max:10',
+            ]);
+
+            $user->update($validated);
+
+            return response()->json([
+                'message' => 'User updated successfully',
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error updating user',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function convertToOrganization(Request $request, $id)
+    {
+        try {
+            $user = User::findOrFail($id);
+
+            $validated = $request->validate([
+                'organization_name' => 'required|string|max:255',
+            ]);
+
+            $user->update([
+                'is_organization' => true,
+                'organization_name' => $validated['organization_name'],
+            ]);
+
+            return response()->json([
+                'message' => 'User converted to organization successfully',
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error converting user to organization',
                 'error' => $e->getMessage()
             ], 500);
         }

@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import "./RequestBlood.scss";
 import Footer from "../../Components/Footer/Footer";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 export const RequestBlood = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -60,19 +62,28 @@ export const RequestBlood = () => {
     try {
       // Create form data for file upload
       const submitData = new FormData();
+
+      // Append all form fields except the file
       Object.keys(formData).forEach((key) => {
-        submitData.append(key, formData[key]);
+        if (key !== "requisition_form") {
+          submitData.append(key, formData[key]);
+        }
       });
 
-      // Configure axios
-      axios.defaults.withCredentials = true;
+      // Append the file last
+      if (formData.requisition_form) {
+        submitData.append("requisition_form", formData.requisition_form);
+      }
 
-      // Get CSRF cookie
-      await axios.get("http://localhost:8000/sanctum/csrf-cookie");
+      // Debug log to check what's being sent
+      console.log("Form data being sent:");
+      for (let [key, value] of submitData.entries()) {
+        console.log(key + ":", value instanceof File ? "File" : value);
+      }
 
       // Submit request with auth token
       const response = await axios.post(
-        "http://localhost:8000/api/blood-requests",
+        `${API_URL}/api/blood-requests`,
         submitData,
         {
           headers: {
@@ -84,34 +95,49 @@ export const RequestBlood = () => {
         }
       );
 
-      setSuccess(true);
-      setFormData({
-        first_name: "",
-        last_name: "",
-        email: "",
-        phone: "",
-        address: "",
-        date_of_birth: "",
-        gender: "",
-        blood_group: "",
-        requisition_form: null,
-      });
-      setAgreeToTerms(false);
+      console.log("Response:", response.data);
 
-      // Reset file input
-      const fileInput = document.getElementById("requisition_form");
-      if (fileInput) fileInput.value = "";
+      if (response.data && response.status === 201) {
+        setSuccess(true);
+        setFormData({
+          first_name: "",
+          last_name: "",
+          email: "",
+          phone: "",
+          address: "",
+          date_of_birth: "",
+          gender: "",
+          blood_group: "",
+          requisition_form: null,
+        });
+        setAgreeToTerms(false);
+
+        // Reset file input
+        const fileInput = document.getElementById("requisition_form");
+        if (fileInput) fileInput.value = "";
+      } else {
+        throw new Error("Unexpected response from server");
+      }
     } catch (err) {
+      console.error("Error details:", err.response?.data || err);
+
       if (err.response?.status === 401) {
         setError("Your session has expired. Please log in again.");
         navigate("/login");
         return;
       }
-      setError(
-        err.response?.data?.message ||
-          err.response?.data?.error ||
-          "An error occurred while submitting your request"
-      );
+
+      if (err.response?.status === 422) {
+        const validationErrors = err.response.data.errors;
+        const errorMessages = Object.values(validationErrors).flat().join(", ");
+        setError(`Validation error: ${errorMessages}`);
+      } else {
+        setError(
+          err.response?.data?.message ||
+            err.response?.data?.error ||
+            "An error occurred while submitting your request"
+        );
+      }
     } finally {
       setLoading(false);
     }

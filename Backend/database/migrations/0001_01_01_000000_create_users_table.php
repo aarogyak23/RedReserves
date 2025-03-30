@@ -17,6 +17,26 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('last_name');
+            $table->string('blood_group');
+            $table->boolean('is_admin')->default(false);
+            // Profile Information
+            $table->string('phone_number')->nullable();
+            $table->text('bio')->nullable();
+            $table->string('profile_picture')->nullable();
+            $table->string('address')->nullable();
+            $table->string('city')->nullable();
+            $table->string('state')->nullable();
+            $table->string('country')->nullable();
+            $table->string('postal_code')->nullable();
+            // Organization Information
+            $table->boolean('is_organization')->default(false);
+            $table->string('organization_name')->nullable();
+            $table->string('organization_type')->nullable();
+            $table->text('organization_description')->nullable();
+            $table->string('organization_website')->nullable();
+            $table->string('organization_logo')->nullable();
+            $table->boolean('organization_verified')->default(false);
             $table->rememberToken();
             $table->timestamps();
         });

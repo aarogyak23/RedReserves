@@ -34,7 +34,14 @@ export const Signup = () => {
     try {
       const response = await axios.post(
         "http://localhost:8000/api/register",
-        formData
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          withCredentials: true,
+        }
       );
 
       if (response.data.status) {
@@ -66,6 +73,7 @@ export const Signup = () => {
       if (err.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
+        console.error("Error response:", err.response.data);
         if (err.response.status === 422) {
           // Validation errors
           const errors = err.response.data.errors;
@@ -86,9 +94,11 @@ export const Signup = () => {
         }
       } else if (err.request) {
         // The request was made but no response was received
+        console.error("No response received:", err.request);
         setError("No response from server. Please try again.");
       } else {
         // Something happened in setting up the request
+        console.error("Request setup error:", err.message);
         setError("An error occurred. Please try again.");
       }
     } finally {

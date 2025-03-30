@@ -10,6 +10,7 @@ import Aboutus from "./Pages/AboutUs/aboutus";
 import AdminLogin from "./Pages/Admin/AdminLogin";
 import AdminDashboard from "./Pages/Admin/AdminDashboard";
 import Search from "./Pages/Search/Search";
+import UserProfile from "./Pages/User/UserProfile";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/profile" element={<UserProfile />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

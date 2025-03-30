@@ -6,33 +6,24 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class BloodRequest extends Model
+class OrganizationRequest extends Model
 {
     use HasFactory;
 
-    protected $table = 'blood_requests';
+    protected $table = 'organization_requests';
 
     protected $fillable = [
         'user_id',
-        'first_name',
-        'last_name',
-        'email',
-        'phone',
-        'address',
-        'date_of_birth',
-        'gender',
-        'blood_group',
-        'requisition_form_path',
+        'organization_name',
+        'organization_phone',
+        'organization_address',
+        'pancard_image_path',
         'status',
-        'admin_remarks'
-    ];
-
-    protected $casts = [
-        'date_of_birth' => 'date',
+        'rejection_reason'
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
-}
+} 
