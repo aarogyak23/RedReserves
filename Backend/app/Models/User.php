@@ -4,6 +4,9 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -18,14 +21,14 @@ class User extends Authenticatable
      *
      * @var string
      */
-    protected $table = 'user_table';
+    protected $table = 'users';
 
     /**
      * The primary key associated with the table.
      *
      * @var string
      */
-    protected $primaryKey = 'user_id';
+    protected $primaryKey = 'id';
 
     /**
      * The attributes that are mass assignable.
@@ -35,9 +38,27 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'last_name',
-        'blood_group',
         'email',
-        'password'
+        'password',
+        'blood_group',
+        'is_admin',
+        'is_organization',
+        'organization_name',
+        'organization_address',
+        'organization_phone',
+        'phone_number',
+        'bio',
+        'profile_picture',
+        'address',
+        'city',
+        'state',
+        'country',
+        'postal_code',
+        'organization_type',
+        'organization_description',
+        'organization_website',
+        'organization_logo',
+        'organization_verified'
     ];
 
     /**
@@ -55,11 +76,24 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    protected function casts(): array
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'is_admin' => 'boolean',
+        'is_organization' => 'boolean',
+    ];
+
+    public function bloodRequests(): HasMany
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
+        return $this->hasMany(BloodRequest::class, 'user_id', 'id');
+    }
+
+    public function organizationRequest(): HasOne
+    {
+        return $this->hasOne(OrganizationRequest::class, 'user_id', 'id');
+    }
+
+    public function organizationRequests()
+    {
+        return $this->hasMany(OrganizationRequest::class);
     }
 }

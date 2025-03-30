@@ -1,20 +1,18 @@
-import React, { useState } from "react";
-import axios from "axios";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { FaUser, FaLock, FaSignInAlt } from "react-icons/fa";
 import "./AdminLogin.scss";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 const AdminLogin = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
   const [errors, setErrors] = useState({});
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,22 +31,33 @@ const AdminLogin = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setError("");
 
     try {
-      const response = await axios.post(`${API_URL}/admin/login`, formData);
+      console.log("Attempting admin login with:", formData);
+      const response = await axios.post(
+        "http://localhost:8000/api/admin/login",
+        {
+          email: formData.email,
+          password: formData.password,
+        }
+      );
 
-      if (response.data.token) {
+      console.log("Login response:", response.data);
+
+      if (response.data.status && response.data.token) {
         localStorage.setItem("adminToken", response.data.token);
         navigate("/admin/dashboard");
+      } else {
+        setError(response.data.message || "Login failed");
       }
     } catch (error) {
-      if (error.response?.data?.errors) {
-        setErrors(error.response.data.errors);
-      } else {
-        setError(error.response?.data?.message || "An error occurred");
-      }
+      console.error("Admin login error:", error);
+      setError(
+        error.response?.data?.message ||
+          "An error occurred during login. Please try again."
+      );
     } finally {
       setLoading(false);
     }

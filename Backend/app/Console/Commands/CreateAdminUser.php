@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Admin;
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class CreateAdminUser extends Command
 {
@@ -14,56 +14,53 @@ class CreateAdminUser extends Command
      *
      * @var string
      */
-    protected $signature = 'make:admin {email?} {name?}';
+    protected $signature = 'admin:create';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Create a new admin user';
+    protected $description = 'Create an admin user';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $email = $this->argument('email') ?? $this->ask('What is the admin email?');
-        $name = $this->argument('name') ?? $this->ask('What is the admin name?');
-        $password = $this->secret('What is the admin password?');
-        $confirmPassword = $this->secret('Confirm the password');
-
-        // Validate input
-        $validator = Validator::make([
-            'name' => $name,
-            'email' => $email,
-            'password' => $password,
-            'password_confirmation' => $confirmPassword,
-        ], [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:admin_users'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
-        ]);
-
-        if ($validator->fails()) {
-            foreach ($validator->errors()->all() as $error) {
-                $this->error($error);
-            }
-            return 1;
-        }
-
         try {
-            Admin::create([
-                'name' => $name,
-                'email' => $email,
-                'password' => Hash::make($password),
-            ]);
+            $email = 'admin@redreserve.com';
+            $user = User::where('email', $email)->first();
 
-            $this->info('Admin user created successfully.');
-            return 0;
+            if ($user) {
+                // Update existing user to be admin
+                $user->update([
+                    'is_admin' => true,
+                    'password' => Hash::make('admin123')
+                ]);
+                Log::info('Existing user updated to admin:', ['email' => $email]);
+            } else {
+                // Create new admin user
+                $user = User::create([
+                    'name' => 'Admin',
+                    'last_name' => 'User',
+                    'email' => $email,
+                    'password' => Hash::make('admin123'),
+                    'blood_group' => 'O+',
+                    'is_admin' => true,
+                    'is_organization' => false
+                ]);
+                Log::info('New admin user created:', ['email' => $email]);
+            }
+
+            $this->info('Admin user setup completed successfully!');
+            $this->info('Email: ' . $email);
+            $this->info('Password: admin123');
+            $this->info('Is Admin: ' . ($user->is_admin ? 'Yes' : 'No'));
+
         } catch (\Exception $e) {
-            $this->error('Failed to create admin user: ' . $e->getMessage());
-            return 1;
+            Log::error('Failed to create/update admin user: ' . $e->getMessage());
+            $this->error('Failed to create/update admin user: ' . $e->getMessage());
         }
     }
 }

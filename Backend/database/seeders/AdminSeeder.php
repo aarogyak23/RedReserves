@@ -3,18 +3,21 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Admin;
+use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 
 class AdminSeeder extends Seeder
 {
-    public function run()
+    public function run(): void
     {
-        Admin::create([
+        User::create([
             'name' => 'Admin',
-            'email' => 'admin@redreserves.com',
+            'last_name' => 'User',
+            'email' => 'admin@redreserve.com',
             'password' => Hash::make('admin123'),
-            'role' => 'admin',
+            'blood_group' => 'O+',
+            'is_admin' => true,
+            'is_organization' => false
         ]);
     }
 } 

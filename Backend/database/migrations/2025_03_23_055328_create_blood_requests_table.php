@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('blood_requests', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('user_table', 'user_id')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->string('first_name');
             $table->string('last_name');
             $table->string('email');
