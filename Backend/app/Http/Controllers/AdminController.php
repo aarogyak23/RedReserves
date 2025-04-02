@@ -373,10 +373,117 @@ class AdminController extends Controller
             }
 
             $bloodRequest = BloodRequest::findOrFail($id);
+            $oldStatus = $bloodRequest->status;
+            
             $bloodRequest->update([
                 'status' => $request->status,
                 'admin_remarks' => $request->admin_remarks
             ]);
+
+            // If the request was approved, send notifications to other users
+            if ($request->status === 'approved' && $oldStatus !== 'approved') {
+                \Log::info('Blood request approved, sending notifications:', [
+                    'request_id' => $bloodRequest->id,
+                    'admin_id' => Auth::id()
+                ]);
+
+                // Get all users except the one who made the request
+                $users = User::where('id', '!=', $bloodRequest->user_id)->get();
+                \Log::info('Found users to notify:', [
+                    'count' => $users->count(),
+                    'user_ids' => $users->pluck('id')->toArray()
+                ]);
+
+                // Send notification to all users
+                $notificationCount = 0;
+                foreach ($users as $user) {
+                    try {
+                        \Log::info('Attempting to send notification to user:', [
+                            'user_id' => $user->id,
+                            'user_email' => $user->email
+                        ]);
+
+                        // Create notification directly in the database
+                        $requesterName = $bloodRequest->first_name . ' ' . $bloodRequest->last_name;
+                        $notificationData = [
+                            'message' => "{$requesterName} has requested blood {$bloodRequest->blood_group} urgently",
+                            'blood_request_id' => $bloodRequest->id,
+                            'blood_group' => $bloodRequest->blood_group,
+                            'requester_name' => $requesterName,
+                            'request_date' => $bloodRequest->created_at->format('Y-m-d H:i:s')
+                        ];
+
+                        $notification = $user->notifications()->create([
+                            'id' => (string) \Illuminate\Support\Str::uuid(),
+                            'type' => \App\Notifications\BloodRequestApproved::class,
+                            'data' => json_encode($notificationData),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+
+                        \Log::info('Notification created for user:', [
+                            'user_id' => $user->id,
+                            'notification_id' => $notification->id,
+                            'notification_data' => $notificationData
+                        ]);
+
+                        $notificationCount++;
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send notification to user:', [
+                            'user_id' => $user->id,
+                            'error' => $e->getMessage(),
+                            'trace' => $e->getTraceAsString()
+                        ]);
+                    }
+                }
+
+                \Log::info('Notifications sent:', [
+                    'request_id' => $bloodRequest->id,
+                    'notifications_sent' => $notificationCount
+                ]);
+            }
+            // If the request was rejected, send notification to the requester
+            elseif ($request->status === 'rejected' && $oldStatus !== 'rejected') {
+                \Log::info('Blood request rejected, sending notification to requester:', [
+                    'request_id' => $bloodRequest->id,
+                    'user_id' => $bloodRequest->user_id,
+                    'admin_id' => Auth::id()
+                ]);
+
+                try {
+                    // Get the user who made the request
+                    $requester = $bloodRequest->user;
+                    
+                    // Create rejection notification directly in the database
+                    $notificationData = [
+                        'message' => "Your blood request for {$bloodRequest->blood_group} blood group has been rejected.",
+                        'blood_request_id' => $bloodRequest->id,
+                        'blood_group' => $bloodRequest->blood_group,
+                        'rejection_reason' => $request->admin_remarks,
+                        'request_date' => $bloodRequest->created_at->format('Y-m-d H:i:s')
+                    ];
+
+                    $notification = $requester->notifications()->create([
+                        'id' => (string) \Illuminate\Support\Str::uuid(),
+                        'type' => \App\Notifications\BloodRequestRejected::class,
+                        'data' => json_encode($notificationData),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+                    \Log::info('Rejection notification created for user:', [
+                        'user_id' => $requester->id,
+                        'notification_id' => $notification->id,
+                        'notification_data' => $notificationData
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send rejection notification:', [
+                        'user_id' => $bloodRequest->user_id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            }
 
             return response()->json([
                 'status' => true,
@@ -534,6 +641,111 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error converting user to organization',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/api/organizations/search",
+     *     tags={"Admin"},
+     *     summary="Search organizations",
+     *     description="Search and filter organizations by name or address",
+     *     security={{"bearerAuth": {}}},
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         description="Search term for organization name or address",
+     *         required=false,
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="page",
+     *         in="query",
+     *         description="Page number for pagination",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="per_page",
+     *         in="query",
+     *         description="Number of items per page",
+     *         required=false,
+     *         @OA\Schema(type="integer", default=10)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Organizations retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="current_page", type="integer", example=1),
+     *             @OA\Property(property="data", type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="id", type="integer", example=1),
+     *                     @OA\Property(property="organization_name", type="string", example="Red Cross"),
+     *                     @OA\Property(property="organization_phone", type="string", example="+1234567890"),
+     *                     @OA\Property(property="organization_address", type="string", example="123 Main St")
+     *                 )
+     *             ),
+     *             @OA\Property(property="last_page", type="integer", example=5)
+     *         )
+     *     )
+     * )
+     */
+    public function searchOrganizations(Request $request)
+    {
+        try {
+            \Log::info('Searching organizations with params:', [
+                'search' => $request->search,
+                'page' => $request->page,
+                'per_page' => $request->per_page
+            ]);
+
+            // Start with organization requests that are approved
+            $query = \App\Models\OrganizationRequest::where('status', 'approved');
+
+            // Apply search filter if search term is provided
+            if ($request->has('search') && !empty($request->search)) {
+                $searchTerm = $request->search;
+                \Log::info('Applying search filter:', ['term' => $searchTerm]);
+                
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('organization_name', 'like', "%{$searchTerm}%")
+                      ->orWhere('organization_address', 'like', "%{$searchTerm}%");
+                });
+            }
+
+            // Get paginated results with proper column selection
+            $organizations = $query->select(
+                'id',
+                'organization_name',
+                'organization_phone',
+                'organization_address'
+            )
+            ->orderBy('organization_name')
+            ->paginate($request->per_page ?? 10);
+
+            \Log::info('Organizations found:', [
+                'count' => $organizations->count(),
+                'total' => $organizations->total()
+            ]);
+
+            return response()->json([
+                'status' => true,
+                'data' => $organizations->items(),
+                'current_page' => $organizations->currentPage(),
+                'last_page' => $organizations->lastPage(),
+                'total' => $organizations->total(),
+                'per_page' => $organizations->perPage()
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error searching organizations: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to search organizations',
                 'error' => $e->getMessage()
             ], 500);
         }

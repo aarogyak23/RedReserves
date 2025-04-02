@@ -107,6 +107,11 @@ const UserProfile = () => {
           withCredentials: true,
         });
         setOrgStatus(response.data);
+
+        // If the request is approved, refresh the user profile
+        if (response.data?.request?.status === "approved") {
+          fetchUserProfile();
+        }
       } catch (err) {
         console.error("Error fetching organization status:", err);
       }

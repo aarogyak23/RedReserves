@@ -41,24 +41,17 @@ class User extends Authenticatable
         'email',
         'password',
         'blood_group',
-        'is_admin',
-        'is_organization',
-        'organization_name',
-        'organization_address',
-        'organization_phone',
         'phone_number',
-        'bio',
-        'profile_picture',
         'address',
         'city',
         'state',
         'country',
         'postal_code',
-        'organization_type',
-        'organization_description',
-        'organization_website',
-        'organization_logo',
-        'organization_verified'
+        'is_organization',
+        'organization_name',
+        'organization_phone',
+        'organization_address',
+        'is_admin'
     ];
 
     /**
@@ -78,13 +71,12 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'is_admin' => 'boolean',
-        'is_organization' => 'boolean',
+        'password' => 'hashed',
     ];
 
     public function bloodRequests(): HasMany
     {
-        return $this->hasMany(BloodRequest::class, 'user_id', 'id');
+        return $this->hasMany(BloodRequest::class);
     }
 
     public function organizationRequest(): HasOne
