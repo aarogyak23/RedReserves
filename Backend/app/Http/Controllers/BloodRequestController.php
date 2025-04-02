@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\BloodRequest;
+use App\Models\User;
+use App\Notifications\BloodRequestApproved;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -86,5 +88,150 @@ class BloodRequestController extends Controller
             ->get();
 
         return response()->json($bloodRequests);
+    }
+
+    public function approve(Request $request, BloodRequest $bloodRequest)
+    {
+        try {
+            \Log::info('Starting blood request approval process:', [
+                'request_id' => $bloodRequest->id,
+                'admin_id' => Auth::id(),
+                'request_data' => $request->all()
+            ]);
+
+            // Update the blood request status
+            $bloodRequest->update([
+                'status' => 'approved',
+                'admin_remarks' => $request->remarks ?? 'Request approved by admin'
+            ]);
+
+            \Log::info('Blood request status updated successfully');
+
+            // Get all users except the one who made the request
+            $users = User::where('id', '!=', $bloodRequest->user_id)->get();
+            \Log::info('Found users to notify:', [
+                'count' => $users->count(),
+                'user_ids' => $users->pluck('id')->toArray(),
+                'user_emails' => $users->pluck('email')->toArray()
+            ]);
+
+            // Send notification to all users
+            $notificationCount = 0;
+            foreach ($users as $user) {
+                try {
+                    \Log::info('Attempting to send notification to user:', [
+                        'user_id' => $user->id,
+                        'user_email' => $user->email
+                    ]);
+
+                    $user->notify(new BloodRequestApproved($bloodRequest));
+                    
+                    // Verify notification was created
+                    $notification = $user->notifications()->latest()->first();
+                    \Log::info('Notification created for user:', [
+                        'user_id' => $user->id,
+                        'notification_id' => $notification ? $notification->id : null,
+                        'notification_data' => $notification ? $notification->data : null
+                    ]);
+
+                    $notificationCount++;
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send notification to user:', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
+            }
+
+            \Log::info('Blood request approval process completed:', [
+                'request_id' => $bloodRequest->id,
+                'notifications_sent' => $notificationCount
+            ]);
+
+            return response()->json([
+                'message' => 'Blood request approved successfully',
+                'blood_request' => $bloodRequest,
+                'notifications_sent' => $notificationCount
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in blood request approval:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Error approving blood request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getNotifications()
+    {
+        try {
+            $user = Auth::user();
+            \Log::info('Fetching notifications for user:', [
+                'user_id' => $user->id,
+                'user_email' => $user->email,
+                'auth_check' => Auth::check()
+            ]);
+
+            // Get all notifications for the user
+            $notifications = $user->notifications()
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($notification) {
+                    return [
+                        'id' => $notification->id,
+                        'type' => $notification->type,
+                        'data' => json_decode($notification->data, true),
+                        'read_at' => $notification->read_at,
+                        'created_at' => $notification->created_at
+                    ];
+                });
+
+            \Log::info('Notifications retrieved:', [
+                'count' => $notifications->count(),
+                'notification_ids' => $notifications->pluck('id')->toArray(),
+                'notification_data' => $notifications->toArray()
+            ]);
+
+            return response()->json($notifications);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching notifications:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Error fetching notifications',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function markNotificationAsRead($id)
+    {
+        try {
+            $user = Auth::user();
+            $notification = $user->notifications()->findOrFail($id);
+            $notification->markAsRead();
+
+            return response()->json([
+                'message' => 'Notification marked as read'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error marking notification as read:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Error marking notification as read',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

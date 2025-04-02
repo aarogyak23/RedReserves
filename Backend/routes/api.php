@@ -36,6 +36,15 @@ Route::middleware("auth:sanctum")->group(function () {
     // Blood request routes
     Route::post("/blood-requests", [BloodRequestController::class, "store"]);
     Route::get("/blood-requests", [BloodRequestController::class, "index"]);
+
+    // Notification routes
+    Route::get('/notifications', [BloodRequestController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/read', [BloodRequestController::class, 'markNotificationAsRead']);
+
+    // Admin routes
+    Route::middleware('admin')->group(function () {
+        Route::post('/blood-requests/{bloodRequest}/approve', [BloodRequestController::class, 'approve']);
+    });
 });
 
 // Admin Routes
@@ -50,3 +59,6 @@ Route::prefix('admin')->group(function () {
         Route::put('organization-requests/{id}/status', [AdminController::class, 'updateOrganizationRequestStatus']);
     });
 });
+
+// Organization search route
+Route::middleware('auth:sanctum')->get('/organizations/search', [AdminController::class, 'searchOrganizations']);

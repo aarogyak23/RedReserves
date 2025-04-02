@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { FaUser } from "react-icons/fa";
+import Notifications from "../Notification/Notifications";
 import "./Navbar.scss";
 
 const Navbar = () => {
@@ -66,10 +67,12 @@ const Navbar = () => {
         <a onClick={() => navigate("/home")}>Home</a>
         <a onClick={() => navigate("/donateblood")}>Donate Blood</a>
         <a onClick={() => navigate("/requestblood")}>Request Blood</a>
-        <a onClick={() => navigate("/about")}>About</a>
+        <a onClick={() => navigate("/aboutus")}>About</a>
+        <a onClick={() => navigate("/search")}>Search</a>
         {isAuthenticated ? (
           <>
             <div className="user-section">
+              <Notifications />
               <a
                 onClick={() => navigate("/profile")}
                 className="profile-link"
