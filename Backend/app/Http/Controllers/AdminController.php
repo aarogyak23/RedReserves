@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\BloodRequest;
+use App\Models\BloodRequestDonor;
 use App\Models\OrganizationRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -80,6 +81,10 @@ class AdminController extends Controller
                 ], 401);
             }
 
+            // Revoke all existing tokens
+            $user->tokens()->delete();
+
+            // Create new token with admin abilities
             $token = $user->createToken("admin-token", ['admin'])->plainTextToken;
 
             return response()->json([
@@ -94,7 +99,11 @@ class AdminController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Admin login error: ' . $e->getMessage());
+            Log::error('Admin login error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'status' => false,
                 'message' => 'An error occurred during login',
@@ -136,6 +145,8 @@ class AdminController extends Controller
     public function getUsers()
     {
         try {
+            Log::info('Admin getUsers: Starting to fetch users list');
+            
             $users = User::select(
                 'id',
                 'name',
@@ -160,11 +171,14 @@ class AdminController extends Controller
                 'data' => $users
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching users: ' . $e->getMessage());
+            Log::error('Admin getUsers error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'status' => false,
-                'message' => 'Error fetching users',
-                'error' => $e->getMessage()
+                'message' => 'Error fetching users'
             ], 500);
         }
     }
@@ -202,7 +216,9 @@ class AdminController extends Controller
     public function getBloodRequests()
     {
         try {
-            $requests = BloodRequest::with('user')
+            Log::info('Admin getBloodRequests: Starting to fetch blood requests');
+            
+            $bloodRequests = BloodRequest::with(['user', 'donors'])
                 ->select(
                     'id',
                     'user_id',
@@ -211,26 +227,28 @@ class AdminController extends Controller
                     'email',
                     'phone',
                     'address',
-                    'date_of_birth',
-                    'gender',
-                    'requisition_form_path',
+                    'blood_group',
                     'status',
                     'admin_remarks',
-                    'created_at'
+                    'created_at',
+                    'updated_at'
                 )
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             return response()->json([
                 'status' => true,
-                'data' => $requests
+                'data' => $bloodRequests
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching blood requests: ' . $e->getMessage());
+            Log::error('Admin getBloodRequests error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'status' => false,
-                'message' => 'Error fetching blood requests',
-                'error' => $e->getMessage()
+                'message' => 'Error fetching blood requests'
             ], 500);
         }
     }
@@ -267,31 +285,37 @@ class AdminController extends Controller
     public function getOrganizationRequests()
     {
         try {
-            $requests = OrganizationRequest::with('user')
+            Log::info('Admin getOrganizationRequests: Starting to fetch organization requests');
+            
+            $orgRequests = OrganizationRequest::with('user')
                 ->select(
                     'id',
                     'user_id',
                     'organization_name',
-                    'organization_phone',
                     'organization_address',
+                    'organization_phone',
                     'pancard_image_path',
                     'status',
                     'rejection_reason',
-                    'created_at'
+                    'created_at',
+                    'updated_at'
                 )
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             return response()->json([
                 'status' => true,
-                'data' => $requests
+                'data' => $orgRequests
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching organization requests: ' . $e->getMessage());
+            Log::error('Admin getOrganizationRequests error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'status' => false,
-                'message' => 'Error fetching organization requests',
-                'error' => $e->getMessage()
+                'message' => 'Error fetching organization requests'
             ], 500);
         }
     }
@@ -545,44 +569,21 @@ class AdminController extends Controller
     public function updateOrganizationRequestStatus(Request $request, $id)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'status' => 'required|in:pending,approved,rejected',
-                'rejection_reason' => 'nullable|string|required_if:status,rejected'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
             $orgRequest = OrganizationRequest::findOrFail($id);
-            
-            // Update organization request status
-            $orgRequest->update([
-                'status' => $request->status,
-                'rejection_reason' => $request->rejection_reason
-            ]);
-
-            // If approved, update user to organization
-            if ($request->status === 'approved') {
-                $orgRequest->user->update([
-                    'is_organization' => true,
-                    'organization_name' => $orgRequest->organization_name
-                ]);
-            }
+            $orgRequest->status = $request->status;
+            $orgRequest->rejection_reason = $request->rejection_reason;
+            $orgRequest->save();
 
             return response()->json([
                 'status' => true,
-                'message' => 'Organization request status updated successfully'
+                'message' => 'Organization request status updated successfully',
+                'data' => $orgRequest
             ]);
         } catch (\Exception $e) {
             Log::error('Error updating organization request status: ' . $e->getMessage());
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to update organization request status',
+                'message' => 'Error updating organization request status',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -746,6 +747,183 @@ class AdminController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Failed to search organizations',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getDonorSubmissions()
+    {
+        try {
+            $submissions = BloodRequest::with(['donors.user', 'user'])
+                ->whereHas('donors')
+                ->get()
+                ->flatMap(function ($request) {
+                    return $request->donors->map(function ($donor) use ($request) {
+                        return [
+                            'id' => $donor->id,
+                            'blood_request_id' => $request->id,
+                            'status' => $donor->status,
+                            'created_at' => $donor->created_at,
+                            'donor' => [
+                                'id' => $donor->user->id,
+                                'name' => $donor->name,
+                                'email' => $donor->email,
+                                'blood_group' => $donor->blood_group
+                            ],
+                            'blood_request' => [
+                                'id' => $request->id,
+                                'hospital_name' => $request->hospital_name ?? 'Not specified',
+                                'required_date' => $request->required_date ?? 'Not specified',
+                                'requester_name' => $request->first_name . ' ' . $request->last_name
+                            ]
+                        ];
+                    });
+                });
+
+            return response()->json([
+                'status' => true,
+                'data' => $submissions
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching donor submissions: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Error fetching donor submissions',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateDonorStatus(Request $request, $id)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:pending,approved,rejected'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $donor = BloodRequestDonor::with(['bloodRequest', 'user'])->findOrFail($id);
+            $oldStatus = $donor->status;
+            
+            $donor->status = $request->status;
+            $donor->save();
+
+            // Send notification to donor about status update
+            if ($oldStatus !== $request->status) {
+                try {
+                    $donorUser = $donor->user;
+                    if ($donorUser) {
+                        $notificationData = [
+                            'message' => "Your donor submission for blood request #{$donor->blood_request_id} has been {$request->status}",
+                            'blood_request_id' => $donor->blood_request_id,
+                            'donor_id' => $donor->id,
+                            'status' => $request->status
+                        ];
+
+                        $notification = $donorUser->notifications()->create([
+                            'id' => (string) \Illuminate\Support\Str::uuid(),
+                            'type' => \App\Notifications\DonorStatusUpdated::class,
+                            'data' => json_encode($notificationData),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+
+                        \Log::info('Donor status update notification sent:', [
+                            'donor_id' => $donor->id,
+                            'notification_id' => $notification->id
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send donor status update notification:', [
+                        'donor_id' => $donor->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Donor status updated successfully',
+                'data' => $donor
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating donor status: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Error updating donor status',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getNotifications()
+    {
+        try {
+            $admin = Auth::user();
+            \Log::info('Fetching notifications for admin:', [
+                'admin_id' => $admin->id,
+                'admin_email' => $admin->email
+            ]);
+
+            // Get all notifications for the admin
+            $notifications = $admin->notifications()
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function($notification) {
+                    return [
+                        'id' => $notification->id,
+                        'type' => $notification->type,
+                        'data' => is_string($notification->data) ? json_decode($notification->data, true) : $notification->data,
+                        'read_at' => $notification->read_at,
+                        'created_at' => $notification->created_at
+                    ];
+                });
+
+            \Log::info('Notifications retrieved:', [
+                'count' => $notifications->count(),
+                'notification_ids' => $notifications->pluck('id')->toArray()
+            ]);
+
+            return response()->json($notifications);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching notifications:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Error fetching notifications',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function markNotificationAsRead($id)
+    {
+        try {
+            $admin = Auth::user();
+            $notification = $admin->notifications()->findOrFail($id);
+            $notification->markAsRead();
+
+            return response()->json([
+                'message' => 'Notification marked as read'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error marking notification as read:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Error marking notification as read',
                 'error' => $e->getMessage()
             ], 500);
         }

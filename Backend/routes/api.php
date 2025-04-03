@@ -45,6 +45,11 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::middleware('admin')->group(function () {
         Route::post('/blood-requests/{bloodRequest}/approve', [BloodRequestController::class, 'approve']);
     });
+
+    // Blood Request Donors
+    Route::post('/blood-requests/{id}/donors', [BloodRequestController::class, 'addDonor']);
+    Route::get('/blood-requests/{id}/donors', [BloodRequestController::class, 'getDonors']);
+    Route::put('/blood-requests/{requestId}/donors/{donorId}/status', [BloodRequestController::class, 'updateDonorStatus']);
 });
 
 // Admin Routes
@@ -55,8 +60,12 @@ Route::prefix('admin')->group(function () {
         Route::get('users', [AdminController::class, 'getUsers']);
         Route::get('blood-requests', [AdminController::class, 'getBloodRequests']);
         Route::get('organization-requests', [AdminController::class, 'getOrganizationRequests']);
+        Route::get('donor-submissions', [AdminController::class, 'getDonorSubmissions']);
+        Route::put('donor-submissions/{id}/status', [AdminController::class, 'updateDonorStatus']);
         Route::put('blood-requests/{id}/status', [AdminController::class, 'updateBloodRequestStatus']);
         Route::put('organization-requests/{id}/status', [AdminController::class, 'updateOrganizationRequestStatus']);
+        Route::get('/notifications', [AdminController::class, 'getNotifications']);
+        Route::post('/notifications/{id}/read', [AdminController::class, 'markNotificationAsRead']);
     });
 });
 

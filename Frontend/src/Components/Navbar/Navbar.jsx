@@ -4,7 +4,7 @@ import { FaUser } from "react-icons/fa";
 import Notifications from "../Notification/Notifications";
 import "./Navbar.scss";
 
-const Navbar = () => {
+export const Navbar = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
