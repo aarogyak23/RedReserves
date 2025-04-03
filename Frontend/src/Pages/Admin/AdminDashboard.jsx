@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
@@ -9,105 +9,141 @@ import {
   FaFilter,
   FaSort,
   FaBuilding,
+  FaHandHoldingHeart,
 } from "react-icons/fa";
 import "./AdminDashboard.scss";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [bloodRequests, setBloodRequests] = useState([]);
   const [orgRequests, setOrgRequests] = useState([]);
+  const [donorSubmissions, setDonorSubmissions] = useState([]);
   const [selectedCard, setSelectedCard] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [selectedOrgRequest, setSelectedOrgRequest] = useState(null);
   const [isOrgModalOpen, setIsOrgModalOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("adminToken");
-        if (!token) {
-          navigate("/admin/login");
-          return;
-        }
+    const checkAuth = () => {
+      const token = localStorage.getItem("adminToken");
+      const user = JSON.parse(localStorage.getItem("adminUser") || "{}");
 
-        console.log("Fetching data with token:", token);
-        const [usersResponse, requestsResponse, orgRequestsResponse] =
-          await Promise.all([
-            axios.get("http://localhost:8000/api/admin/users", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }),
-            axios.get("http://localhost:8000/api/admin/blood-requests", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }),
-            axios.get("http://localhost:8000/api/admin/organization-requests", {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-            }),
-          ]);
+      if (!token || !user.is_admin) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        navigate("/admin/login");
+        return false;
+      }
 
-        console.log("Users response:", usersResponse.data);
-        console.log("Blood requests response:", requestsResponse.data);
-        console.log(
-          "Organization requests response:",
-          orgRequestsResponse.data
-        );
+      // Configure axios defaults
+      axios.defaults.baseURL = API_URL;
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      axios.defaults.headers.common["Accept"] = "application/json";
+      axios.defaults.headers.common["Content-Type"] = "application/json";
+      axios.defaults.withCredentials = false;
 
-        if (usersResponse.data?.status && usersResponse.data?.data) {
-          setUsers(usersResponse.data.data);
-        }
-        if (requestsResponse.data?.status && requestsResponse.data?.data) {
-          setBloodRequests(requestsResponse.data.data);
-        }
-        if (
-          orgRequestsResponse.data?.status &&
-          orgRequestsResponse.data?.data
-        ) {
-          setOrgRequests(orgRequestsResponse.data.data);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error.response || error);
-        if (error.response?.status === 401) {
-          navigate("/admin/login");
-        } else if (error.response?.status === 500) {
-          console.error("Server error details:", error.response.data);
-        }
+      return true;
+    };
+
+    const initializeData = async () => {
+      if (checkAuth()) {
+        await fetchData();
       }
     };
 
-    fetchData();
+    initializeData();
   }, [navigate]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      // Create an axios instance with specific configuration
+      const axiosInstance = axios.create({
+        baseURL: API_URL,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("adminToken")}`,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        withCredentials: false,
+      });
+
+      console.log(
+        "Fetching data with token:",
+        localStorage.getItem("adminToken")
+      );
+
+      const [usersRes, bloodReqRes, orgReqRes, donorSubmissionsRes] =
+        await Promise.all([
+          axiosInstance.get("/api/admin/users"),
+          axiosInstance.get("/api/admin/blood-requests"),
+          axiosInstance.get("/api/admin/organization-requests"),
+          axiosInstance.get("/api/admin/donor-submissions"),
+        ]);
+
+      console.log("Users response:", usersRes.data);
+      console.log("Blood requests response:", bloodReqRes.data);
+      console.log("Organization requests response:", orgReqRes.data);
+      console.log("Donor submissions response:", donorSubmissionsRes.data);
+
+      if (usersRes.data?.status) {
+        setUsers(usersRes.data.data || []);
+      }
+      if (bloodReqRes.data?.status) {
+        setBloodRequests(bloodReqRes.data.data || []);
+      }
+      if (orgReqRes.data?.status) {
+        setOrgRequests(orgReqRes.data.data || []);
+      }
+      if (donorSubmissionsRes.data?.status) {
+        setDonorSubmissions(donorSubmissionsRes.data.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error.response || error);
+
+      if (error.response?.status === 401) {
+        console.log("Unauthorized access, redirecting to login");
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        navigate("/admin/login");
+      } else {
+        const errorMessage =
+          error.response?.data?.message ||
+          error.message ||
+          "An error occurred while fetching data. Please try again.";
+        console.error("Error details:", {
+          status: error.response?.status,
+          message: errorMessage,
+          data: error.response?.data,
+        });
+        setError(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminUser");
+    delete axios.defaults.headers.common["Authorization"];
     navigate("/admin/login");
   };
 
   const handleStatusUpdate = async (requestId, newStatus) => {
     try {
-      const token = localStorage.getItem("adminToken");
       const response = await axios.put(
-        `${API_URL}/api/admin/blood-requests/${requestId}/status`,
-        { status: newStatus },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        `/api/admin/blood-requests/${requestId}/status`,
+        { status: newStatus }
       );
 
       if (response.data.status) {
@@ -121,21 +157,24 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error("Error updating status:", error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        navigate("/admin/login");
+      } else {
+        setError(
+          error.response?.data?.message ||
+            "An error occurred while updating status. Please try again."
+        );
+      }
     }
   };
 
   const handleOrgRequestStatus = async (requestId, status) => {
     try {
-      const token = localStorage.getItem("adminToken");
       const response = await axios.put(
-        `${API_URL}/api/admin/organization-requests/${requestId}/status`,
-        { status },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+        `/api/admin/organization-requests/${requestId}/status`,
+        { status, rejection_reason: rejectionReason }
       );
 
       if (response.data.status) {
@@ -144,9 +183,22 @@ const AdminDashboard = () => {
             request.id === requestId ? { ...request, status } : request
           )
         );
+        setIsOrgModalOpen(false);
+        setSelectedOrgRequest(null);
+        setRejectionReason("");
       }
     } catch (error) {
       console.error("Error updating organization request status:", error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        navigate("/admin/login");
+      } else {
+        setError(
+          error.response?.data?.message ||
+            "An error occurred while updating organization request. Please try again."
+        );
+      }
     }
   };
 
@@ -158,6 +210,41 @@ const AdminDashboard = () => {
   const handleConvertToOrganization = (user) => {
     // TODO: Implement organization conversion functionality
     console.log("Convert to organization:", user);
+  };
+
+  const handleDonorStatusUpdate = async (
+    requestId,
+    submissionId,
+    newStatus
+  ) => {
+    try {
+      const response = await axios.put(
+        `/api/admin/donor-submissions/${submissionId}/status`,
+        { status: newStatus }
+      );
+
+      if (response.data.status) {
+        setDonorSubmissions((prevSubmissions) =>
+          prevSubmissions.map((submission) =>
+            submission.id === submissionId
+              ? { ...submission, status: newStatus }
+              : submission
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error updating donor submission status:", error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        navigate("/admin/login");
+      } else {
+        setError(
+          error.response?.data?.message ||
+            "An error occurred while updating donor submission status. Please try again."
+        );
+      }
+    }
   };
 
   const filteredUsers = users.filter((user) => {
@@ -185,9 +272,29 @@ const AdminDashboard = () => {
     return matchesSearch && matchesStatus;
   });
 
+  if (loading) {
+    return (
+      <div className="loading">
+        <div className="loading-spinner"></div>
+        <p>Loading dashboard...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="error-container">
+        <div className="error-message">
+          <h2>Error</h2>
+          <p>{error}</p>
+          <button onClick={fetchData}>Try Again</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="admin-dashboard">
-      {/* Header */}
       <div className="header">
         <div className="header-content">
           <div className="logo-section">
@@ -200,11 +307,8 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="main-content">
-        {/* Stats Cards */}
         <div className="cards-grid">
-          {/* Users Card */}
           <div
             className={`card ${selectedCard === "users" ? "selected" : ""}`}
             onClick={() =>
@@ -227,7 +331,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Blood Requests Card */}
           <div
             className={`card ${selectedCard === "requests" ? "selected" : ""}`}
             onClick={() =>
@@ -250,7 +353,6 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Organization Requests Card */}
           <div
             className={`card ${
               selectedCard === "org-requests" ? "selected" : ""
@@ -281,11 +383,31 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
+
+          <div
+            className={`card ${selectedCard === "donors" ? "selected" : ""}`}
+            onClick={() =>
+              setSelectedCard(selectedCard === "donors" ? null : "donors")
+            }
+          >
+            <div className="card-content">
+              <div className="card-info">
+                <div className="icon-wrapper">
+                  <FaHandHoldingHeart />
+                </div>
+                <div className="text-content">
+                  <h2>Donor Submissions</h2>
+                  <p>{donorSubmissions.length}</p>
+                </div>
+              </div>
+              <div className="arrow">
+                {selectedCard === "donors" ? "▼" : "▶"}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Content Area */}
         <div className="content-area">
-          {/* Search and Filter Bar */}
           <div className="search-filter-bar">
             <div className="search-input">
               <FaSearch />
@@ -312,7 +434,6 @@ const AdminDashboard = () => {
             )}
           </div>
 
-          {/* Organization Requests Table */}
           {selectedCard === "org-requests" && (
             <div className="table-container">
               <table>
@@ -375,7 +496,6 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Users Table */}
           {selectedCard === "users" && (
             <div className="table-container">
               <table>
@@ -471,7 +591,6 @@ const AdminDashboard = () => {
             </div>
           )}
 
-          {/* Blood Requests Table */}
           {selectedCard === "requests" && (
             <div className="table-container">
               <table>
@@ -524,15 +643,7 @@ const AdminDashboard = () => {
                         </span>
                       </td>
                       <td>
-                        <span
-                          className={`status-badge ${
-                            request.status === "approved"
-                              ? "approved"
-                              : request.status === "rejected"
-                              ? "rejected"
-                              : "pending"
-                          }`}
-                        >
+                        <span className={`status-badge ${request.status}`}>
                           {request.status}
                         </span>
                       </td>
@@ -567,10 +678,97 @@ const AdminDashboard = () => {
               </table>
             </div>
           )}
+
+          {selectedCard === "donors" && (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Donor Name</th>
+                    <th>Blood Group</th>
+                    <th>Blood Request</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {donorSubmissions.map((submission) => (
+                    <tr key={submission.id}>
+                      <td>
+                        <div className="user-info">
+                          <div className="avatar">
+                            {submission.donor.name[0]}
+                          </div>
+                          <div className="name">{submission.donor.name}</div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="status-badge pending">
+                          {submission.donor.blood_group}
+                        </span>
+                      </td>
+                      <td>
+                        <p>
+                          <strong>Request ID:</strong>{" "}
+                          {submission.blood_request.id}
+                        </p>
+                        <p>
+                          <strong>Requester:</strong>{" "}
+                          {submission.blood_request.requester_name}
+                        </p>
+                        <p>
+                          <strong>Hospital:</strong>{" "}
+                          {submission.blood_request.hospital_name}
+                        </p>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${submission.status}`}>
+                          {submission.status}
+                        </span>
+                      </td>
+                      <td>
+                        {new Date(submission.created_at).toLocaleDateString()}
+                      </td>
+                      <td>
+                        {submission.status === "pending" && (
+                          <div className="action-buttons">
+                            <button
+                              className="approve"
+                              onClick={() =>
+                                handleDonorStatusUpdate(
+                                  submission.blood_request_id,
+                                  submission.id,
+                                  "approved"
+                                )
+                              }
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="reject"
+                              onClick={() =>
+                                handleDonorStatusUpdate(
+                                  submission.blood_request_id,
+                                  submission.id,
+                                  "rejected"
+                                )
+                              }
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Organization Request Review Modal */}
       {isOrgModalOpen && selectedOrgRequest && (
         <div className="modal-overlay">
           <div className="modal-content">

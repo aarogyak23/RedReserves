@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaUser, FaLock, FaSignInAlt } from "react-icons/fa";
 import "./AdminLogin.scss";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -13,6 +15,21 @@ const AdminLogin = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Check if already logged in
+    const token = localStorage.getItem("adminToken");
+    const user = JSON.parse(localStorage.getItem("adminUser") || "{}");
+
+    // Only redirect if we have both a token and a valid admin user
+    if (token && user && user.is_admin) {
+      navigate("/admin/dashboard");
+    } else {
+      // Clear any invalid tokens
+      localStorage.removeItem("adminToken");
+      localStorage.removeItem("adminUser");
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,37 +44,77 @@ const AdminLogin = () => {
         [name]: "",
       }));
     }
+    setError(""); // Clear general error when user types
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.email) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email";
+    }
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     setLoading(true);
     setError("");
 
     try {
       console.log("Attempting admin login with:", formData);
-      const response = await axios.post(
-        "http://localhost:8000/api/admin/login",
-        {
-          email: formData.email,
-          password: formData.password,
-        }
-      );
 
+      // Configure axios
+      const axiosConfig = {
+        baseURL: API_URL,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+      };
+
+      const response = await axios.post(
+        "/api/admin/login",
+        formData,
+        axiosConfig
+      );
       console.log("Login response:", response.data);
 
       if (response.data.status && response.data.token) {
+        // Store token and user data
         localStorage.setItem("adminToken", response.data.token);
+        localStorage.setItem("adminUser", JSON.stringify(response.data.user));
+
+        // Configure axios defaults for future requests
+        axios.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${response.data.token}`;
+        axios.defaults.baseURL = API_URL;
+
         navigate("/admin/dashboard");
       } else {
         setError(response.data.message || "Login failed");
       }
     } catch (error) {
       console.error("Admin login error:", error);
-      setError(
-        error.response?.data?.message ||
-          "An error occurred during login. Please try again."
-      );
+      if (error.response?.status === 401) {
+        setError("Invalid email or password");
+      } else if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else if (error.message === "Network Error") {
+        setError(
+          "Unable to connect to the server. Please check your internet connection."
+        );
+      } else {
+        setError("An error occurred during login. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -71,7 +128,7 @@ const AdminLogin = () => {
             <FaUser />
           </div>
           <h1>Admin Login</h1>
-          <p>Welcome Admin!Login to your dashboard.</p>
+          <p>Welcome Admin! Login to your dashboard.</p>
         </div>
 
         {error && <div className="error-alert">{error}</div>}

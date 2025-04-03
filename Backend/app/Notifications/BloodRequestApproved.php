@@ -39,6 +39,7 @@ class BloodRequestApproved extends Notification implements ShouldQueue
             'blood_request_id' => $this->bloodRequest->id,
             'blood_group' => $this->bloodRequest->blood_group,
             'requester_name' => $requesterName,
+            'url' => '/blood-requests',
             'request_date' => $this->bloodRequest->created_at->format('Y-m-d H:i:s')
         ];
 

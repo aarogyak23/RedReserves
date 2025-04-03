@@ -4,7 +4,7 @@ import { FaUser } from "react-icons/fa";
 import Notifications from "../Notification/Notifications";
 import "./Navbar.scss";
 
-const Navbar = () => {
+export const Navbar = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
@@ -67,6 +67,7 @@ const Navbar = () => {
         <a onClick={() => navigate("/home")}>Home</a>
         <a onClick={() => navigate("/donateblood")}>Donate Blood</a>
         <a onClick={() => navigate("/requestblood")}>Request Blood</a>
+        <a>Campaigns</a>
         <a onClick={() => navigate("/aboutus")}>About</a>
         <a onClick={() => navigate("/search")}>Search</a>
         {isAuthenticated ? (
