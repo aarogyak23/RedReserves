@@ -67,6 +67,7 @@ export const Navbar = () => {
         <a onClick={() => navigate("/home")}>Home</a>
         <a onClick={() => navigate("/donateblood")}>Donate Blood</a>
         <a onClick={() => navigate("/requestblood")}>Request Blood</a>
+        <a>Campaigns</a>
         <a onClick={() => navigate("/aboutus")}>About</a>
         <a onClick={() => navigate("/search")}>Search</a>
         {isAuthenticated ? (
