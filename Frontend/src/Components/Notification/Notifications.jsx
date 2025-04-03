@@ -118,26 +118,36 @@ export const Notifications = () => {
         localStorage.getItem("token") || localStorage.getItem("adminToken");
       console.log("Handling donor action:", action);
 
-      if (action.method === "POST" || action.method === "PUT") {
-        const endpoint = `${API_URL}/api${action.url}`;
-        console.log("Making request to:", endpoint);
+      if (action.method === "PUT" || action.method === "POST") {
+        // Remove /api prefix if present
+        const url = action.url.startsWith("/api/")
+          ? action.url.substring(4)
+          : action.url;
+        const endpoint = `${API_URL}/api${url}`;
+        console.log(
+          "Making request to:",
+          endpoint,
+          "with method:",
+          action.method
+        );
 
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        };
+
+        let response;
         if (action.method === "PUT") {
-          await axios.put(endpoint, action.data, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-        } else {
-          await axios.post(endpoint, action.data, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
+          response = await axios.put(endpoint, action.data, config);
+        } else if (action.method === "POST") {
+          response = await axios.post(endpoint, action.data, config);
         }
 
+        console.log("Action response:", response.data);
+
         // Refresh notifications after action
-        fetchNotifications();
+        await fetchNotifications();
       }
 
       // Mark notification as read

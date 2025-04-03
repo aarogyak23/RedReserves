@@ -20,7 +20,10 @@ class BloodRequest extends Model
         'email',
         'phone',
         'address',
+        'date_of_birth',
+        'gender',
         'blood_group',
+        'requisition_form_path',
         'status',
         'admin_remarks',
     ];

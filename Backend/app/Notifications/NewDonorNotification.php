@@ -55,13 +55,13 @@ class NewDonorNotification extends Notification implements ShouldQueue
                 ],
                 [
                     'label' => 'Approve Donor',
-                    'url' => "/admin/donor-submissions/{$this->donor->id}/status",
+                    'url' => "/blood-requests/{$this->bloodRequest->id}/donors/{$this->donor->id}/status",
                     'method' => 'PUT',
                     'data' => ['status' => 'approved']
                 ],
                 [
                     'label' => 'Reject Donor',
-                    'url' => "/admin/donor-submissions/{$this->donor->id}/status",
+                    'url' => "/blood-requests/{$this->bloodRequest->id}/donors/{$this->donor->id}/status",
                     'method' => 'PUT',
                     'data' => ['status' => 'rejected']
                 ]

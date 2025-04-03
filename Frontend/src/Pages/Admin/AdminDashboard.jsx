@@ -298,7 +298,7 @@ const AdminDashboard = () => {
       <div className="header">
         <div className="header-content">
           <div className="logo-section">
-            <h1>Blood Bank Admin</h1>
+            <h1>Red Reserve Admin</h1>
           </div>
           <button className="logout-btn" onClick={handleLogout}>
             <FaSignOutAlt />

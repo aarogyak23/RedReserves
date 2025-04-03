@@ -163,6 +163,7 @@ class AdminController extends Controller
                 'organization_name',
                 'created_at'
             )
+            ->where('is_admin', false)  // Exclude admin users
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -569,10 +570,19 @@ class AdminController extends Controller
     public function updateOrganizationRequestStatus(Request $request, $id)
     {
         try {
-            $orgRequest = OrganizationRequest::findOrFail($id);
+            $orgRequest = OrganizationRequest::with('user')->findOrFail($id);
             $orgRequest->status = $request->status;
             $orgRequest->rejection_reason = $request->rejection_reason;
             $orgRequest->save();
+
+            // If the request is approved, update the user's organization status
+            if ($request->status === 'approved') {
+                $user = $orgRequest->user;
+                $user->update([
+                    'is_organization' => true,
+                    'organization_name' => $orgRequest->organization_name
+                ]);
+            }
 
             return response()->json([
                 'status' => true,
