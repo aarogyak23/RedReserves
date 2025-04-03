@@ -25,7 +25,20 @@ const ProtectedAdminRoute = ({ children }) => {
   return children;
 };
 
+// Protected route component for authenticated users
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
 ProtectedAdminRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+ProtectedRoute.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
@@ -51,7 +64,14 @@ function App() {
           />
           <Route path="/search" element={<Search />} />
           <Route path="/profile" element={<UserProfile />} />
-          <Route path="/blood-requests" element={<BloodRequests />} />
+          <Route
+            path="/blood-requests"
+            element={
+              <ProtectedRoute>
+                <BloodRequests />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/" element={<Navigate to="/home" replace />} />
         </Routes>
       </BrowserRouter>

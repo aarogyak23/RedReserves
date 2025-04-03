@@ -110,15 +110,21 @@ const UserProfile = () => {
 
         // If the request is approved, refresh the user profile
         if (response.data?.request?.status === "approved") {
-          fetchUserProfile();
+          await fetchUserProfile();
         }
       } catch (err) {
         console.error("Error fetching organization status:", err);
       }
     };
 
+    // Set up an interval to check organization status every 30 seconds
+    const statusInterval = setInterval(fetchOrgStatus, 30000);
+
     fetchUserProfile();
     fetchOrgStatus();
+
+    // Clean up interval on component unmount
+    return () => clearInterval(statusInterval);
   }, [navigate]);
 
   const handleInputChange = (e) => {
@@ -144,11 +150,47 @@ const UserProfile = () => {
     });
   };
 
+  const handleEditClick = () => {
+    // Initialize form data with current user data when entering edit mode
+    setFormData({
+      name: user.name || "",
+      last_name: user.last_name || "",
+      email: user.email || "",
+      phone_number: user.phone_number || "",
+      address: user.address || "",
+      city: user.city || "",
+      state: user.state || "",
+      country: user.country || "",
+      postal_code: user.postal_code || "",
+      blood_group: user.blood_group || "",
+      current_password: "",
+      new_password: "",
+      new_password_confirmation: "",
+    });
+    setIsEditing(true);
+  };
+
   const handleProfileImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setProfileImage(file);
       setPreviewImage(URL.createObjectURL(file));
+
+      // Ensure form data is initialized with user data
+      if (
+        !formData.name ||
+        !formData.last_name ||
+        !formData.email ||
+        !formData.blood_group
+      ) {
+        setFormData((prevData) => ({
+          ...prevData,
+          name: user.name || "",
+          last_name: user.last_name || "",
+          email: user.email || "",
+          blood_group: user.blood_group || "",
+        }));
+      }
     }
   };
 
@@ -161,33 +203,39 @@ const UserProfile = () => {
 
       // Create base data object with all existing user data
       const baseData = {
-        name: user.name,
-        last_name: user.last_name,
-        email: user.email,
-        blood_group: user.blood_group,
-        phone_number: user.phone_number || "",
-        address: user.address || "",
-        city: user.city || "",
-        state: user.state || "",
-        country: user.country || "",
-        postal_code: user.postal_code || "",
+        name: formData.name || user.name,
+        last_name: formData.last_name || user.last_name,
+        email: formData.email || user.email,
+        blood_group: formData.blood_group || user.blood_group,
+        phone_number: formData.phone_number || user.phone_number || "",
+        address: formData.address || user.address || "",
+        city: formData.city || user.city || "",
+        state: formData.state || user.state || "",
+        country: formData.country || user.country || "",
+        postal_code: formData.postal_code || user.postal_code || "",
       };
-
-      // Override with any modified form data
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value && Object.prototype.hasOwnProperty.call(baseData, key)) {
-          baseData[key] = value;
-        }
-      });
 
       // If there's a profile image, use FormData
       if (profileImage) {
         const formDataToSend = new FormData();
 
-        // Append all base data
-        Object.entries(baseData).forEach(([key, value]) => {
-          formDataToSend.append(key, value);
-        });
+        // First, append all required fields
+        formDataToSend.append("name", baseData.name);
+        formDataToSend.append("last_name", baseData.last_name);
+        formDataToSend.append("email", baseData.email);
+        formDataToSend.append("blood_group", baseData.blood_group);
+
+        // Then append optional fields
+        if (baseData.phone_number)
+          formDataToSend.append("phone_number", baseData.phone_number);
+        if (baseData.address)
+          formDataToSend.append("address", baseData.address);
+        if (baseData.city) formDataToSend.append("city", baseData.city);
+        if (baseData.state) formDataToSend.append("state", baseData.state);
+        if (baseData.country)
+          formDataToSend.append("country", baseData.country);
+        if (baseData.postal_code)
+          formDataToSend.append("postal_code", baseData.postal_code);
 
         // Handle password fields if provided
         if (formData.current_password?.trim()) {
@@ -201,7 +249,7 @@ const UserProfile = () => {
           }
         }
 
-        // Append the profile image
+        // Finally, append the profile image
         formDataToSend.append("profile_image", profileImage);
 
         // Debug log the form data entries
@@ -591,10 +639,7 @@ const UserProfile = () => {
                   <strong>Organization Name:</strong> {user?.organization_name}
                 </p>
               )}
-              <button
-                className="btn-primary"
-                onClick={() => setIsEditing(true)}
-              >
+              <button className="btn-primary" onClick={handleEditClick}>
                 Edit Profile
               </button>
             </div>

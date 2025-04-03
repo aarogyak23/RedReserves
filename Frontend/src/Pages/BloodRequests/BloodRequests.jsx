@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import {
   FaSearch,
   FaTint,
@@ -7,13 +8,15 @@ import {
   FaCalendarAlt,
   FaUserPlus,
 } from "react-icons/fa";
-import { Navbar } from "../../Components/Navbar/Navbar";
+
 import Footer from "../../Components/Footer/Footer";
 import "./BloodRequests.scss";
+import Navbar from "../../Components/Navbar/Navbar";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const BloodRequests = () => {
+  const navigate = useNavigate();
   const [bloodRequests, setBloodRequests] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -29,8 +32,15 @@ export const BloodRequests = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     fetchBloodRequests();
-  }, []);
+  }, [navigate]);
 
   const fetchBloodRequests = async () => {
     try {
