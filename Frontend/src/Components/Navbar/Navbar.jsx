@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { FaUser } from "react-icons/fa";
 import Notifications from "../Notification/Notifications";
 import "./Navbar.scss";
@@ -64,23 +64,19 @@ export const Navbar = () => {
         alt="Logo"
       />
       <nav className="navbar">
-        <a onClick={() => navigate("/home")}>Home</a>
-        <a onClick={() => navigate("/donateblood")}>Donate Blood</a>
-        <a onClick={() => navigate("/requestblood")}>Request Blood</a>
-        <a>Campaigns</a>
-        <a onClick={() => navigate("/aboutus")}>About</a>
-        <a onClick={() => navigate("/search")}>Search</a>
+        <Link to="/home">Home</Link>
+        <Link to="/donateblood">Donate Blood</Link>
+        <Link to="/requestblood">Request Blood</Link>
+        <Link to="/campaigns">Campaigns</Link>
+        <Link to="/aboutus">About</Link>
+        <Link to="/search">Search</Link>
         {isAuthenticated ? (
           <>
             <div className="user-section">
               <Notifications />
-              <a
-                onClick={() => navigate("/profile")}
-                className="profile-link"
-                title={user?.name}
-              >
+              <Link to="/profile" className="profile-link" title={user?.name}>
                 <FaUser className="profile-icon" />
-              </a>
+              </Link>
             </div>
             <a onClick={handleLogout} className="logout-link">
               Logout
@@ -88,8 +84,8 @@ export const Navbar = () => {
           </>
         ) : (
           <>
-            <a onClick={() => navigate("/login")}>Login</a>
-            <a onClick={() => navigate("/register")}>Register</a>
+            <Link to="/login">Login</Link>
+            <Link to="/register">Register</Link>
           </>
         )}
       </nav>

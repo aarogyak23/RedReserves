@@ -13,11 +13,11 @@ class AdminSeeder extends Seeder
         User::create([
             'name' => 'Admin',
             'last_name' => 'User',
-            'email' => 'admin@redreserve.com',
+            'email' => 'admin@redreserves.com',
             'password' => Hash::make('admin123'),
-            'blood_group' => 'O+',
+            'blood_group' => 'A+',
             'is_admin' => true,
-            'is_organization' => false
+            'email_verified_at' => now(),
         ]);
     }
 } 

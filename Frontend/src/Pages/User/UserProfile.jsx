@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosConfig";
 import {
   FaFileUpload,
   FaSpinner,
@@ -9,8 +9,6 @@ import {
 import "./UserProfile.scss";
 import Navbar from "../../Components/Navbar/Navbar";
 import { useNavigate } from "react-router-dom";
-
-const API_URL = import.meta.env.VITE_API_URL;
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
@@ -53,22 +51,10 @@ const UserProfile = () => {
 
     const fetchUserProfile = async () => {
       try {
-        console.log("Fetching profile with API URL:", API_URL);
-        const response = await axios.get(`${API_URL}/api/profile`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        });
-
-        // Log the received user data
+        const response = await axiosInstance.get("/api/profile");
         console.log("Received user data:", response.data);
-
-        // Store user data
         setUser(response.data);
 
-        // Initialize form data with user data, ensuring all required fields are set
         const initialFormData = {
           name: response.data.name || "",
           last_name: response.data.last_name || "",
@@ -85,9 +71,7 @@ const UserProfile = () => {
           new_password_confirmation: "",
         };
 
-        // Log the form data being set
         console.log("Setting initial form data:", initialFormData);
-
         setFormData(initialFormData);
       } catch (err) {
         console.error("Error fetching user profile:", err);
@@ -99,32 +83,21 @@ const UserProfile = () => {
 
     const fetchOrgStatus = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/organization/status`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        });
+        const response = await axiosInstance.get("/api/organization/status");
         setOrgStatus(response.data);
-
-        // If the request is approved, refresh the user profile
         if (response.data?.request?.status === "approved") {
           await fetchUserProfile();
         }
       } catch (err) {
         console.error("Error fetching organization status:", err);
+        setError(
+          err.response?.data?.message || "Failed to fetch organization status"
+        );
       }
     };
 
-    // Set up an interval to check organization status every 30 seconds
-    const statusInterval = setInterval(fetchOrgStatus, 30000);
-
     fetchUserProfile();
     fetchOrgStatus();
-
-    // Clean up interval on component unmount
-    return () => clearInterval(statusInterval);
   }, [navigate]);
 
   const handleInputChange = (e) => {
@@ -260,8 +233,8 @@ const UserProfile = () => {
           );
         }
 
-        const response = await axios.put(
-          `${API_URL}/api/profile`,
+        const response = await axiosInstance.put(
+          "/api/profile",
           formDataToSend,
           {
             headers: {
@@ -287,7 +260,7 @@ const UserProfile = () => {
         }
 
         console.log("Sending JSON data:", dataToSend);
-        const response = await axios.put(`${API_URL}/api/profile`, dataToSend, {
+        const response = await axiosInstance.put("/api/profile", dataToSend, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -361,7 +334,7 @@ const UserProfile = () => {
         formDataToSend.append(key, orgFormData[key]);
       });
 
-      await axios.post(`${API_URL}/api/organization/request`, formDataToSend, {
+      await axiosInstance.post("/api/organization/request", formDataToSend, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
@@ -370,13 +343,7 @@ const UserProfile = () => {
       });
 
       // Refresh organization status
-      const response = await axios.get(`${API_URL}/api/organization/status`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        withCredentials: true,
-      });
+      const response = await axiosInstance.get("/api/organization/status");
       setOrgStatus(response.data);
       setOrgFormData({
         organization_name: "",

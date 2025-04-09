@@ -6,6 +6,8 @@ import axios from "axios";
 import "./login.scss";
 import Navbar from "../../Components/Navbar/Navbar";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 export const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -32,20 +34,16 @@ export const Login = () => {
       axios.defaults.withCredentials = true;
 
       // First, get CSRF cookie
-      await axios.get("http://localhost:8000/sanctum/csrf-cookie");
+      await axios.get(`${API_URL}/sanctum/csrf-cookie`);
 
       // Then attempt login
-      const response = await axios.post(
-        "http://localhost:8000/api/login",
-        formData,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          withCredentials: true,
-        }
-      );
+      const response = await axios.post(`${API_URL}/api/login`, formData, {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        withCredentials: true,
+      });
 
       if (response.data.status) {
         // Show success message
@@ -58,9 +56,14 @@ export const Login = () => {
           .querySelector(".formSection h2")
           .insertAdjacentElement("afterend", successDiv);
 
-        // Store user data
+        // Store user data and token
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("user", JSON.stringify(response.data.user));
+
+        // Set default authorization header for future requests
+        axios.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${response.data.token}`;
 
         // Wait for 1.5 seconds before redirecting
         setTimeout(() => {

@@ -6,12 +6,16 @@ use App\Models\User;
 use App\Models\BloodRequest;
 use App\Models\BloodRequestDonor;
 use App\Models\OrganizationRequest;
+use App\Models\Campaign;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\NewCampaignNotification;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @OA\Tag(
@@ -935,6 +939,178 @@ class AdminController extends Controller
             return response()->json([
                 'message' => 'Error marking notification as read',
                 'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getCampaigns()
+    {
+        try {
+            $campaigns = Campaign::withCount([
+                'interests as interested_count' => function($query) {
+                    $query->where('status', 'interested');
+                },
+                'interests as not_interested_count' => function($query) {
+                    $query->where('status', 'not_interested');
+                }
+            ])->get();
+
+            return response()->json([
+                'status' => true,
+                'data' => $campaigns
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching campaigns: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch campaigns'
+            ], 500);
+        }
+    }
+
+    public function createCampaign(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'start_date' => 'required|date',
+                'end_date' => 'required|date|after:start_date',
+                'location' => 'required|string|max:255',
+                'status' => 'required|in:active,completed,cancelled',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            ]);
+
+            // Remove image from validated data as we'll handle it separately
+            unset($validated['image']);
+            
+            // Add admin_id to the validated data
+            $validated['admin_id'] = $request->user()->id;
+
+            // Handle image upload if present
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('campaign-images', 'public');
+                $validated['image_path'] = $path;
+            }
+
+            $campaign = Campaign::create($validated);
+
+            // Send notifications to all non-admin users
+            $users = User::where('is_admin', false)->get();
+            Notification::send($users, new NewCampaignNotification($campaign));
+            
+            return response()->json([
+                'status' => true,
+                'message' => 'Campaign created successfully',
+                'data' => $campaign->load('admin')
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error('Failed to create campaign: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to create campaign',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateCampaign(Request $request, $id)
+    {
+        try {
+            $campaign = Campaign::findOrFail($id);
+            
+            $validated = $request->validate([
+                'title' => 'sometimes|required|string|max:255',
+                'description' => 'sometimes|required|string',
+                'start_date' => 'sometimes|required|date',
+                'end_date' => 'sometimes|required|date|after:start_date',
+                'location' => 'sometimes|required|string|max:255',
+                'status' => 'sometimes|required|in:active,completed,cancelled',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            ]);
+
+            // Remove image from validated data
+            unset($validated['image']);
+
+            // Handle image upload if present
+            if ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($campaign->image_path) {
+                    Storage::disk('public')->delete($campaign->image_path);
+                }
+                $path = $request->file('image')->store('campaign-images', 'public');
+                $validated['image_path'] = $path;
+            }
+
+            $campaign->update($validated);
+            
+            return response()->json([
+                'status' => true,
+                'message' => 'Campaign updated successfully',
+                'data' => $campaign->load('admin')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to update campaign: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update campaign',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteCampaign($id)
+    {
+        try {
+            $campaign = Campaign::findOrFail($id);
+            $campaign->delete();
+            
+            return response()->json([
+                'status' => true,
+                'message' => 'Campaign deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error deleting campaign: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to delete campaign'
+            ], 500);
+        }
+    }
+
+    public function updateCampaignInterest(Request $request, $id)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:interested,not_interested'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $campaign = Campaign::findOrFail($id);
+            $user = auth()->user();
+
+            // Update or create the interest status
+            $campaign->interests()->updateOrCreate(
+                ['user_id' => $user->id],
+                ['status' => $request->status]
+            );
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Interest status updated successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating campaign interest: ' . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to update interest status'
             ], 500);
         }
     }

@@ -12,6 +12,8 @@ import AdminDashboard from "./Pages/Admin/AdminDashboard";
 import Search from "./Pages/Search/Search";
 import UserProfile from "./Pages/User/UserProfile";
 import BloodRequests from "./Pages/BloodRequests/BloodRequests";
+import Campaigns from "./Pages/Campaigns/Campaigns";
+import AdminCampaigns from "./Pages/Admin/AdminCampaigns";
 
 // Protected route component for admin routes
 const ProtectedAdminRoute = ({ children }) => {
@@ -52,6 +54,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/donateblood" element={<DonateBlood />} />
           <Route path="/requestblood" element={<RequestBlood />} />
+          <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/aboutus" element={<Aboutus />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
@@ -70,6 +73,15 @@ function App() {
               <ProtectedRoute>
                 <BloodRequests />
               </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/campaigns"
+            element={
+              <ProtectedAdminRoute>
+                <AdminCampaigns />
+              </ProtectedAdminRoute>
             }
           />
           <Route path="/" element={<Navigate to="/home" replace />} />

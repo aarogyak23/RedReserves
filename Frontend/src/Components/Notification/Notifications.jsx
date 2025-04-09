@@ -192,6 +192,20 @@ export const Notifications = () => {
           url: data.url || "/blood-requests",
           icon: "approved",
         };
+      case "App\\Notifications\\NewCampaignNotification":
+        return {
+          title: data.title || "New Campaign",
+          message: data.message,
+          url: "/campaigns",
+          icon: "campaign",
+        };
+      case "App\\Notifications\\CampaignUpdateNotification":
+        return {
+          title: data.title || "Campaign Update",
+          message: data.message,
+          url: "/campaigns",
+          icon: "campaign",
+        };
       default:
         return {
           title: "Notification",
@@ -223,6 +237,7 @@ export const Notifications = () => {
 
       // Navigate to the URL if present
       if (formattedNotification.url) {
+        console.log("Navigating to:", formattedNotification.url);
         navigate(formattedNotification.url);
         setIsOpen(false);
       }

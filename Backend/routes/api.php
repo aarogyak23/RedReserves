@@ -41,6 +41,10 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::get('/notifications', [BloodRequestController::class, 'getNotifications']);
     Route::post('/notifications/{id}/read', [BloodRequestController::class, 'markNotificationAsRead']);
 
+    // Campaign routes
+    Route::get('/campaigns', [AdminController::class, 'getCampaigns']);
+    Route::post('/campaigns/{id}/interest', [AdminController::class, 'updateCampaignInterest']);
+
     // Admin routes
     Route::middleware('admin')->group(function () {
         Route::post('/blood-requests/{bloodRequest}/approve', [BloodRequestController::class, 'approve']);
@@ -66,6 +70,12 @@ Route::prefix('admin')->group(function () {
         Route::put('organization-requests/{id}/status', [AdminController::class, 'updateOrganizationRequestStatus']);
         Route::get('/notifications', [AdminController::class, 'getNotifications']);
         Route::post('/notifications/{id}/read', [AdminController::class, 'markNotificationAsRead']);
+        
+        // Campaign routes (admin only)
+        Route::get('campaigns', [AdminController::class, 'getCampaigns']);
+        Route::post('campaigns', [AdminController::class, 'createCampaign']);
+        Route::put('campaigns/{id}', [AdminController::class, 'updateCampaign']);
+        Route::delete('campaigns/{id}', [AdminController::class, 'deleteCampaign']);
     });
 });
 
