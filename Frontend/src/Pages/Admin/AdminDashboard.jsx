@@ -10,6 +10,7 @@ import {
   FaSort,
   FaBuilding,
   FaHandHoldingHeart,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import "./AdminDashboard.scss";
 
@@ -20,6 +21,7 @@ const AdminDashboard = () => {
   const [bloodRequests, setBloodRequests] = useState([]);
   const [orgRequests, setOrgRequests] = useState([]);
   const [donorSubmissions, setDonorSubmissions] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
   const [selectedCard, setSelectedCard] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -28,6 +30,17 @@ const AdminDashboard = () => {
   const [rejectionReason, setRejectionReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showCampaignForm, setShowCampaignForm] = useState(false);
+  const [newCampaign, setNewCampaign] = useState({
+    title: "",
+    description: "",
+    start_date: "",
+    end_date: "",
+    location: "",
+    status: "active",
+    image: null,
+    image_preview: null,
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -66,7 +79,6 @@ const AdminDashboard = () => {
     setError("");
 
     try {
-      // Create an axios instance with specific configuration
       const axiosInstance = axios.create({
         baseURL: API_URL,
         headers: {
@@ -77,23 +89,19 @@ const AdminDashboard = () => {
         withCredentials: false,
       });
 
-      console.log(
-        "Fetching data with token:",
-        localStorage.getItem("adminToken")
-      );
-
-      const [usersRes, bloodReqRes, orgReqRes, donorSubmissionsRes] =
-        await Promise.all([
-          axiosInstance.get("/api/admin/users"),
-          axiosInstance.get("/api/admin/blood-requests"),
-          axiosInstance.get("/api/admin/organization-requests"),
-          axiosInstance.get("/api/admin/donor-submissions"),
-        ]);
-
-      console.log("Users response:", usersRes.data);
-      console.log("Blood requests response:", bloodReqRes.data);
-      console.log("Organization requests response:", orgReqRes.data);
-      console.log("Donor submissions response:", donorSubmissionsRes.data);
+      const [
+        usersRes,
+        bloodReqRes,
+        orgReqRes,
+        donorSubmissionsRes,
+        campaignsRes,
+      ] = await Promise.all([
+        axiosInstance.get("/api/admin/users"),
+        axiosInstance.get("/api/admin/blood-requests"),
+        axiosInstance.get("/api/admin/organization-requests"),
+        axiosInstance.get("/api/admin/donor-submissions"),
+        axiosInstance.get("/api/admin/campaigns"),
+      ]);
 
       if (usersRes.data?.status) {
         setUsers(usersRes.data.data || []);
@@ -106,6 +114,9 @@ const AdminDashboard = () => {
       }
       if (donorSubmissionsRes.data?.status) {
         setDonorSubmissions(donorSubmissionsRes.data.data || []);
+      }
+      if (campaignsRes.data?.status) {
+        setCampaigns(campaignsRes.data.data || []);
       }
     } catch (error) {
       console.error("Error fetching data:", error.response || error);
@@ -247,6 +258,117 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteCampaign = async (campaignId) => {
+    try {
+      const response = await axios.delete(`/api/admin/campaigns/${campaignId}`);
+      if (response.data.status) {
+        setCampaigns((prevCampaigns) =>
+          prevCampaigns.filter((campaign) => campaign.id !== campaignId)
+        );
+      }
+    } catch (error) {
+      console.error("Error deleting campaign:", error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem("adminToken");
+        localStorage.removeItem("adminUser");
+        navigate("/admin/login");
+      } else {
+        setError(
+          error.response?.data?.message ||
+            "An error occurred while deleting the campaign. Please try again."
+        );
+      }
+    }
+  };
+
+  const handleCampaignInputChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "image") {
+      const file = files[0];
+      setNewCampaign((prev) => ({
+        ...prev,
+        image: file,
+        image_preview: URL.createObjectURL(file),
+      }));
+    } else {
+      setNewCampaign((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
+  };
+
+  const handleCreateCampaign = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData();
+      formData.append("title", newCampaign.title);
+      formData.append("description", newCampaign.description);
+      formData.append("start_date", newCampaign.start_date);
+      formData.append("end_date", newCampaign.end_date);
+      formData.append("location", newCampaign.location);
+      formData.append("status", newCampaign.status);
+      if (newCampaign.image) {
+        formData.append("image", newCampaign.image);
+      }
+
+      if (newCampaign.id) {
+        // Update existing campaign
+        await axios.post(
+          `${API_URL}/api/admin/campaigns/${newCampaign.id}`,
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+      } else {
+        // Create new campaign
+        await axios.post(`${API_URL}/api/admin/campaigns`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+
+      // Reset form and fetch updated campaigns
+      setShowCampaignForm(false);
+      setNewCampaign({
+        title: "",
+        description: "",
+        start_date: "",
+        end_date: "",
+        location: "",
+        status: "active",
+        image: null,
+        image_preview: null,
+      });
+      fetchData();
+    } catch (error) {
+      console.error("Error creating/updating campaign:", error);
+      setError(
+        error.response?.data?.message || "Failed to create/update campaign"
+      );
+    }
+  };
+
+  const handleEditCampaign = (campaign) => {
+    setNewCampaign({
+      title: campaign.title,
+      description: campaign.description,
+      start_date: campaign.start_date,
+      end_date: campaign.end_date,
+      location: campaign.location,
+      status: campaign.status,
+      image: null,
+      image_preview: campaign.image_path
+        ? `${API_URL}/storage/${campaign.image_path}`
+        : null,
+    });
+    setShowCampaignForm(true);
+  };
+
   const filteredUsers = users.filter((user) => {
     const searchTermLower = searchTerm.toLowerCase();
     return (
@@ -271,6 +393,109 @@ const AdminDashboard = () => {
       filterStatus === "all" || request.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
+
+  const renderCampaigns = () => {
+    if (loading) {
+      return (
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <p>Loading campaigns...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="error-container">
+          <p>{error}</p>
+          <button onClick={fetchData}>Try Again</button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="campaigns-section">
+        <div className="section-header">
+          <h2>Campaigns</h2>
+          <button
+            className="add-campaign-btn"
+            onClick={() => setShowCampaignForm(true)}
+          >
+            Add New Campaign
+          </button>
+        </div>
+        <div className="campaigns-list">
+          {campaigns.map((campaign) => (
+            <div key={campaign.id} className="campaign-item">
+              {campaign.image_path && (
+                <div className="campaign-image">
+                  <img
+                    src={`${API_URL}/storage/${campaign.image_path}`}
+                    alt={campaign.title}
+                  />
+                </div>
+              )}
+              <div className="campaign-content">
+                <h3>{campaign.title}</h3>
+                <p className="description">{campaign.description}</p>
+                <div className="campaign-details">
+                  <div className="detail">
+                    <span className="label">Location:</span>
+                    <span className="value">{campaign.location}</span>
+                  </div>
+                  <div className="detail">
+                    <span className="label">Start Date:</span>
+                    <span className="value">
+                      {new Date(campaign.start_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="detail">
+                    <span className="label">End Date:</span>
+                    <span className="value">
+                      {new Date(campaign.end_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="detail">
+                    <span className={`status ${campaign.status}`}>
+                      {campaign.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="interest-counts">
+                  <div className="count interested">
+                    <span className="label">Interested</span>
+                    <span className="value">
+                      {campaign.interested_count || 0}
+                    </span>
+                  </div>
+                  <div className="count not-interested">
+                    <span className="label">Not Interested</span>
+                    <span className="value">
+                      {campaign.not_interested_count || 0}
+                    </span>
+                  </div>
+                </div>
+                <div className="campaign-actions">
+                  <button
+                    className="edit-btn"
+                    onClick={() => handleEditCampaign(campaign)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteCampaign(campaign.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -402,6 +627,28 @@ const AdminDashboard = () => {
               </div>
               <div className="arrow">
                 {selectedCard === "donors" ? "▼" : "▶"}
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`card ${selectedCard === "campaigns" ? "selected" : ""}`}
+            onClick={() =>
+              setSelectedCard(selectedCard === "campaigns" ? null : "campaigns")
+            }
+          >
+            <div className="card-content">
+              <div className="card-info">
+                <div className="icon-wrapper">
+                  <FaCalendarAlt />
+                </div>
+                <div className="text-content">
+                  <h2>Campaign Management</h2>
+                  <p>{campaigns.length} Campaigns</p>
+                </div>
+              </div>
+              <div className="arrow">
+                {selectedCard === "campaigns" ? "▼" : "▶"}
               </div>
             </div>
           </div>
@@ -766,8 +1013,110 @@ const AdminDashboard = () => {
               </table>
             </div>
           )}
+
+          {selectedCard === "campaigns" && renderCampaigns()}
         </div>
       </div>
+
+      {showCampaignForm && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h2>{newCampaign.id ? "Edit Campaign" : "Create New Campaign"}</h2>
+            <form onSubmit={handleCreateCampaign}>
+              <div className="form-group">
+                <label>Title:</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={newCampaign.title}
+                  onChange={handleCampaignInputChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Description:</label>
+                <textarea
+                  name="description"
+                  value={newCampaign.description}
+                  onChange={handleCampaignInputChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Start Date:</label>
+                <input
+                  type="datetime-local"
+                  name="start_date"
+                  value={newCampaign.start_date}
+                  onChange={handleCampaignInputChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>End Date:</label>
+                <input
+                  type="datetime-local"
+                  name="end_date"
+                  value={newCampaign.end_date}
+                  onChange={handleCampaignInputChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Location:</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={newCampaign.location}
+                  onChange={handleCampaignInputChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Campaign Image:</label>
+                <input
+                  type="file"
+                  name="image"
+                  accept="image/*"
+                  onChange={handleCampaignInputChange}
+                />
+                {newCampaign.image_preview && (
+                  <div className="image-preview">
+                    <img
+                      src={newCampaign.image_preview}
+                      alt="Campaign preview"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="modal-actions">
+                <button type="submit" className="approve">
+                  {newCampaign.id ? "Update Campaign" : "Create Campaign"}
+                </button>
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={() => {
+                    setShowCampaignForm(false);
+                    setNewCampaign({
+                      title: "",
+                      description: "",
+                      start_date: "",
+                      end_date: "",
+                      location: "",
+                      status: "active",
+                      image: null,
+                      image_preview: null,
+                    });
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {isOrgModalOpen && selectedOrgRequest && (
         <div className="modal-overlay">

@@ -63,7 +63,8 @@
 
     .cards-grid {
       display: flex;
-      gap: 1.5rem;
+      width: 100%;
+      gap: 0.5rem;
       margin-bottom: 2rem;
       padding: 0.5rem;
       overflow-x: auto;
@@ -685,133 +686,331 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+
+  .modal-content {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+
+    h2 {
+      margin-bottom: 1.5rem;
+      color: #333;
+      font-size: 1.5rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #555;
+        font-weight: 500;
+      }
+
+      input[type="text"],
+      input[type="datetime-local"],
+      textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 1rem;
+
+        &:focus {
+          outline: none;
+          border-color: #e53e3e;
+        }
+      }
+
+      textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
+
+      .image-preview {
+        margin-top: 1rem;
+
+        img {
+          max-width: 100%;
+          max-height: 200px;
+          object-fit: cover;
+          border-radius: 4px;
+        }
+      }
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+
+      button {
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &.approve {
+          background-color: #e53e3e;
+          color: white;
+          border: none;
+
+          &:hover {
+            background-color: #c53030;
+          }
+        }
+
+        &.cancel-btn {
+          background-color: #edf2f7;
+          color: #4a5568;
+          border: none;
+
+          &:hover {
+            background-color: #e2e8f0;
+          }
+        }
+      }
+    }
+  }
 }
 
-.modal-content {
-  background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.campaigns-section {
+  padding: 20px;
 
-  h2 {
-    margin-bottom: 1.5rem;
-    color: #333;
-    font-size: 1.5rem;
-    font-weight: 600;
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+
+    h2 {
+      margin: 0;
+      color: #333;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .add-campaign-btn {
+      width: 20%;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      padding: 10px 40px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      &:hover {
+        background-color: #c0392b;
+        transform: translateY(-1px);
+      }
+
+      svg {
+        font-size: 1.1rem;
+      }
+    }
   }
 
-  .org-request-details {
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
+  .campaigns-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
 
-    p {
-      margin-bottom: 0.75rem;
-      color: #666;
-      font-size: 0.875rem;
+    .campaign-item {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
 
-      strong {
+      &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: #e74c3c;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+
+        &::before {
+          opacity: 1;
+        }
+      }
+
+      .campaign-image {
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+        margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+      }
+
+      h3 {
+        margin: 0 0 1rem 0;
         color: #333;
+        font-size: 1.2rem;
         font-weight: 600;
       }
 
-      &:last-child {
-        margin-bottom: 0;
+      .description {
+        color: #666;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+        font-size: 0.95rem;
       }
-    }
 
-    .pancard-preview {
-      margin-top: 1rem;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid #eee;
+      .campaign-details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
 
-      img {
-        width: 100%;
-        height: auto;
-        display: block;
-      }
-    }
-  }
+        .detail {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
 
-  .form-group {
-    margin-bottom: 1.5rem;
+          .label {
+            font-size: 0.85rem;
+            color: #666;
+            font-weight: 500;
+          }
 
-    label {
-      display: block;
-      margin-bottom: 0.5rem;
-      color: #666;
-      font-weight: 500;
-    }
+          .value {
+            color: #333;
+            font-weight: 600;
+          }
+        }
 
-    textarea {
-      width: 100%;
-      padding: 0.75rem;
-      border: 2px solid #eee;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      min-height: 100px;
-      resize: vertical;
-      transition: all 0.3s ease;
+        .status {
+          display: inline-block;
+          padding: 0.4rem 0.75rem;
+          border-radius: 9999px;
+          font-size: 0.85rem;
+          font-weight: 500;
 
-      &:focus {
-        outline: none;
-        border-color: #e74c3c;
-        box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
-      }
-    }
-  }
+          &.active {
+            background: #dcfce7;
+            color: #166534;
+          }
 
-  .modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 2rem;
+          &.completed {
+            background: #fee2e2;
+            color: #991b1b;
+          }
 
-    button {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.3s ease;
-
-      &.approve {
-        background: #f0fdf4;
-        color: #16a34a;
-
-        &:hover {
-          background: #dcfce7;
+          &.cancelled {
+            background: #fef3c7;
+            color: #92400e;
+          }
         }
       }
 
-      &.reject {
-        background: #fef2f2;
-        color: #dc2626;
+      .interest-counts {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
 
-        &:hover {
-          background: #fee2e2;
+        .count {
+          flex: 1;
+          text-align: center;
+          padding: 0.75rem;
+          border-radius: 8px;
+          font-weight: 500;
+
+          &.interested {
+            background: #dcfce7;
+            color: #166534;
+          }
+
+          &.not-interested {
+            background: #fee2e2;
+            color: #991b1b;
+          }
+
+          .label {
+            display: block;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+          }
+
+          .value {
+            display: block;
+            font-size: 1.25rem;
+            font-weight: 600;
+          }
         }
       }
 
-      &.cancel-btn {
-        background: #f3f4f6;
-        color: #4b5563;
+      .campaign-actions {
+        display: flex;
+        gap: 0.75rem;
 
-        &:hover {
-          background: #e5e7eb;
+        button {
+          flex: 1;
+          padding: 0.75rem;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+
+          &.edit-btn {
+            background: #e0f2fe;
+            color: #0369a1;
+
+            &:hover {
+              background: #bae6fd;
+            }
+          }
+
+          &.delete-btn {
+            background: #fee2e2;
+            color: #991b1b;
+
+            &:hover {
+              background: #fecaca;
+            }
+          }
+
+          svg {
+            font-size: 1.1rem;
+          }
         }
       }
     }
