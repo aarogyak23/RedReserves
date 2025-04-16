@@ -1,0 +1,188 @@
+.organization-details-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  margin-left: 200px;
+
+  .error-message {
+    text-align: center;
+    color: #e74c3c;
+    padding: 1rem;
+    background: #ffeaea;
+    border-radius: 8px;
+    margin: 2rem auto;
+    max-width: 600px;
+  }
+
+  .organization-header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h1 {
+      font-size: 2.5rem;
+      color: #2c3e50;
+      margin-bottom: 0.5rem;
+    }
+
+    .organization-status {
+      .status-badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+
+        &.verified {
+          background-color: #e8f5e9;
+          color: #2e7d32;
+        }
+      }
+    }
+  }
+
+  .organization-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+
+    .contact-info,
+    .blood-stocks-section {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .contact-info {
+      h2 {
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+      }
+
+      .info-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+
+        .info-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 1rem;
+
+          .icon {
+            color: #e74c3c;
+            font-size: 1.2rem;
+            margin-top: 0.25rem;
+          }
+
+          div {
+            h3 {
+              font-size: 1rem;
+              color: #7f8c8d;
+              margin-bottom: 0.25rem;
+            }
+
+            p {
+              font-size: 1.1rem;
+              color: #2c3e50;
+            }
+          }
+        }
+      }
+    }
+
+    .blood-stocks-section {
+      h2 {
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .icon {
+          color: #e74c3c;
+        }
+      }
+
+      .blood-stocks-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+
+        .blood-stock-card {
+          background: #f8f9fa;
+          border-radius: 8px;
+          padding: 1rem;
+          text-align: center;
+
+          .blood-group {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 0.5rem;
+          }
+
+          .quantity {
+            font-size: 1.1rem;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+          }
+
+          .updated-at {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+          }
+        }
+
+        .no-stocks {
+          grid-column: 1 / -1;
+          text-align: center;
+          color: #7f8c8d;
+          padding: 2rem;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    .organization-content {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .organization-header h1 {
+      font-size: 2rem;
+    }
+  }
+}
+
+.error-section {
+  text-align: center;
+  padding: 2rem;
+  max-width: 600px;
+  margin: 2rem auto;
+
+  .error-message {
+    color: #dc3545;
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .back-to-search {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #0056b3;
+    }
+  }
+}

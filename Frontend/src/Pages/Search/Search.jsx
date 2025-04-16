@@ -1,12 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
-import { FaSearch, FaBuilding, FaPhone, FaMapMarkerAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import axiosInstance from "../../utils/axiosConfig";
+import {
+  FaSearch,
+  FaBuilding,
+  FaPhone,
+  FaMapMarkerAlt,
+  FaTint,
+} from "react-icons/fa";
 import Navbar from "../../Components/Navbar/Navbar";
 import "./Search.scss";
 
-const API_URL = import.meta.env.VITE_API_URL;
-
 const Search = () => {
+  const navigate = useNavigate();
   const [organizations, setOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -37,20 +43,13 @@ const Search = () => {
     try {
       setLoading(true);
       setError(null);
-      const token = localStorage.getItem("token");
 
-      const response = await axios.get(
-        `${API_URL}/api/organizations/search?page=${currentPage}&per_page=${perPage}&search=${searchTerm}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        }
+      const response = await axiosInstance.get(
+        `/api/organizations/search?page=${currentPage}&per_page=${perPage}&search=${searchTerm}`
       );
 
       if (response.data.status) {
+        console.log("Organizations fetched:", response.data.data);
         setOrganizations(response.data.data || []);
         setTotalPages(response.data.last_page || 1);
         setError(null);
@@ -82,13 +81,25 @@ const Search = () => {
     setCurrentPage(page);
   };
 
+  const handleOrganizationClick = (orgId) => {
+    console.log("Clicking organization:", orgId);
+    const org = organizations.find((o) => o.id === orgId);
+    console.log("Organization data:", org);
+    // Ensure orgId is a clean number/string without any colons
+    const cleanOrgId = String(orgId).split(":")[0];
+    navigate(`/organizations/${cleanOrgId}`);
+  };
+
   return (
     <>
       <Navbar />
       <div className="search-container">
         <div className="search-header">
           <h1>Search Organizations</h1>
-          <p>Find verified blood donation organizations in your area</p>
+          <p>
+            Find verified blood donation organizations and check their blood
+            stock levels
+          </p>
         </div>
 
         <div className="search-form">
@@ -112,13 +123,17 @@ const Search = () => {
           <>
             <div className="organizations-grid">
               {organizations.map((org) => (
-                <div key={org.id} className="organization-card">
+                <div
+                  key={org.id}
+                  className="organization-card"
+                  onClick={() => handleOrganizationClick(org.id)}
+                >
                   <div className="organization-icon">
                     <FaBuilding />
                   </div>
                   <div className="organization-info">
-                    <h3>{org.organization_name}</h3>
                     <div className="organization-details">
+                      <h3>{org.organization_name}</h3>
                       <p>
                         <FaPhone className="icon" />
                         {org.organization_phone || "No phone number provided"}
@@ -128,7 +143,27 @@ const Search = () => {
                         {org.organization_address || "No address provided"}
                       </p>
                     </div>
+                    {org.blood_stocks && org.blood_stocks.length > 0 && (
+                      <div className="blood-stocks">
+                        <h4>
+                          <FaTint className="icon" /> Available Blood Stocks
+                        </h4>
+                        <div className="stock-grid">
+                          {org.blood_stocks.map((stock) => (
+                            <div key={stock.id} className="stock-item">
+                              <span className="blood-group">
+                                {stock.blood_group}
+                              </span>
+                              <span className="quantity">
+                                {stock.quantity} units
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  <div className="view-more">View Details →</div>
                 </div>
               ))}
             </div>

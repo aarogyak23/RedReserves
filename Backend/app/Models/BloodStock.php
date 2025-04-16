@@ -1,0 +1,1 @@
+<?php namespace App\Models; use Illuminate\Database\Eloquent\Factories\HasFactory; use Illuminate\Database\Eloquent\Model; class BloodStock extends Model { use HasFactory; protected $fillable = ["organization_id", "blood_group", "quantity"]; public function organization() { return $this->belongsTo(User::class, "organization_id"); } }

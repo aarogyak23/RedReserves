@@ -3,12 +3,14 @@
   top: 0;
   left: 0;
   width: 100%;
-  padding: 2px 2%;
   background: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 1rem 2rem;
   z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
 }
 .logoImage {
   width: 100px;
@@ -316,4 +318,3 @@ main {
     }
   }
 }
-

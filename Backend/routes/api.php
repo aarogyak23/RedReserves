@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BloodRequestController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\BloodStockController;
+use App\Http\Controllers\DonationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,10 +30,11 @@ Route::post("/login", [AuthController::class, "login"]);
 
 // User routes with auth:sanctum
 Route::middleware("auth:sanctum")->group(function () {
-    Route::get("/profile", [UserController::class, "getProfile"]);
-    Route::put("/profile", [UserController::class, "updateProfile"]);
+    Route::get('/profile', [UserController::class, 'show']);
+    Route::put('/profile', [UserController::class, 'updateProfile']);
     Route::post("/organization/request", [UserController::class, "submitOrganizationRequest"]);
     Route::get("/organization/status", [UserController::class, "getOrganizationStatus"]);
+    Route::get('/organizations/{id}', [UserController::class, 'getOrganizationDetails']);
 
     // Blood request routes
     Route::post("/blood-requests", [BloodRequestController::class, "store"]);
@@ -54,6 +57,13 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post('/blood-requests/{id}/donors', [BloodRequestController::class, 'addDonor']);
     Route::get('/blood-requests/{id}/donors', [BloodRequestController::class, 'getDonors']);
     Route::put('/blood-requests/{requestId}/donors/{donorId}/status', [BloodRequestController::class, 'updateDonorStatus']);
+
+    // Blood Stock routes
+    Route::get('organizations/{organizationId}/stocks', [BloodStockController::class, 'getOrganizationStocks']);
+    Route::post('stocks/update', [BloodStockController::class, 'updateStock']);
+    Route::get('organizations/stocks', [BloodStockController::class, 'getAllOrganizationsWithStocks']);
+
+    Route::get('/donations/history', [DonationController::class, 'getUserDonationHistory']);
 });
 
 // Admin Routes

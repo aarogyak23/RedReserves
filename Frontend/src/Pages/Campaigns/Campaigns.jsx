@@ -9,10 +9,19 @@ const Campaigns = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadingInterests, setLoadingInterests] = useState({});
 
   useEffect(() => {
     fetchCampaigns();
   }, []);
+
+  const sortCampaignsByDate = (campaigns) => {
+    return [...campaigns].sort((a, b) => {
+      const dateA = new Date(a.start_date);
+      const dateB = new Date(b.start_date);
+      return dateB - dateA; // Sort in descending order (latest first)
+    });
+  };
 
   const fetchCampaigns = async () => {
     try {
@@ -24,7 +33,8 @@ const Campaigns = () => {
         },
       });
       if (response.data.status) {
-        setCampaigns(response.data.data);
+        const sortedCampaigns = sortCampaignsByDate(response.data.data);
+        setCampaigns(sortedCampaigns);
       }
     } catch (error) {
       console.error("Error fetching campaigns:", error);
@@ -36,6 +46,7 @@ const Campaigns = () => {
 
   const handleInterestUpdate = async (campaignId, status) => {
     try {
+      setLoadingInterests((prev) => ({ ...prev, [campaignId]: true }));
       const token = localStorage.getItem("token");
       await axios.post(
         `${API_URL}/api/campaigns/${campaignId}/interest`,
@@ -46,10 +57,20 @@ const Campaigns = () => {
           },
         }
       );
-      // Refresh campaigns to update the status
-      fetchCampaigns();
+
+      // Update the local campaign state to reflect the new interest status
+      setCampaigns((prevCampaigns) =>
+        prevCampaigns.map((campaign) =>
+          campaign.id === campaignId
+            ? { ...campaign, user_interest: status }
+            : campaign
+        )
+      );
     } catch (error) {
       console.error("Failed to update interest status:", error);
+      setError("Failed to update interest status. Please try again.");
+    } finally {
+      setLoadingInterests((prev) => ({ ...prev, [campaignId]: false }));
     }
   };
 
@@ -114,20 +135,42 @@ const Campaigns = () => {
                 </div>
                 <div className="campaign-actions">
                   <button
-                    className="interested-btn"
+                    className={`interested-btn ${
+                      campaign.user_interest === "interested" ? "active" : ""
+                    }`}
                     onClick={() =>
                       handleInterestUpdate(campaign.id, "interested")
                     }
+                    disabled={
+                      loadingInterests[campaign.id] ||
+                      campaign.user_interest === "interested"
+                    }
                   >
-                    Interested
+                    {loadingInterests[campaign.id] ? (
+                      <span className="button-loader"></span>
+                    ) : (
+                      "Interested"
+                    )}
                   </button>
                   <button
-                    className="not-interested-btn"
+                    className={`not-interested-btn ${
+                      campaign.user_interest === "not_interested"
+                        ? "active"
+                        : ""
+                    }`}
                     onClick={() =>
                       handleInterestUpdate(campaign.id, "not_interested")
                     }
+                    disabled={
+                      loadingInterests[campaign.id] ||
+                      campaign.user_interest === "not_interested"
+                    }
                   >
-                    Not Interested
+                    {loadingInterests[campaign.id] ? (
+                      <span className="button-loader"></span>
+                    ) : (
+                      "Not Interested"
+                    )}
                   </button>
                 </div>
               </div>

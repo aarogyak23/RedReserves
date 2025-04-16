@@ -716,8 +716,9 @@ class AdminController extends Controller
                 'per_page' => $request->per_page
             ]);
 
-            // Start with organization requests that are approved
-            $query = \App\Models\OrganizationRequest::where('status', 'approved');
+            // Query users who are organizations
+            $query = User::where('is_organization', true)
+                        ->whereNotNull('organization_name'); // Ensure organization name is set
 
             // Apply search filter if search term is provided
             if ($request->has('search') && !empty($request->search)) {
@@ -726,7 +727,7 @@ class AdminController extends Controller
                 
                 $query->where(function ($q) use ($searchTerm) {
                     $q->where('organization_name', 'like', "%{$searchTerm}%")
-                      ->orWhere('organization_address', 'like', "%{$searchTerm}%");
+                      ->orWhere('address', 'like', "%{$searchTerm}%");
                 });
             }
 
@@ -734,15 +735,27 @@ class AdminController extends Controller
             $organizations = $query->select(
                 'id',
                 'organization_name',
-                'organization_phone',
-                'organization_address'
+                'phone_number',
+                'address',
+                'email'
             )
+            ->with(['bloodStocks' => function($query) {
+                $query->select('id', 'organization_id', 'blood_group', 'quantity', 'updated_at');
+            }])
             ->orderBy('organization_name')
             ->paginate($request->per_page ?? 10);
 
+            // Log the SQL query for debugging
+            \Log::info('Organization search query:', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
+            ]);
+
+            // Log the results for debugging
             \Log::info('Organizations found:', [
                 'count' => $organizations->count(),
-                'total' => $organizations->total()
+                'total' => $organizations->total(),
+                'organizations' => $organizations->items()
             ]);
 
             return response()->json([
@@ -755,13 +768,16 @@ class AdminController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Error searching organizations: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'sql' => isset($query) ? $query->toSql() : null,
+                'bindings' => isset($query) ? $query->getBindings() : null
             ]);
             
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to search organizations',
-                'error' => $e->getMessage()
+                'message' => 'Failed to search organizations. ' . $e->getMessage()
             ], 500);
         }
     }

@@ -1,10 +1,8 @@
 .user-profile {
-  max-width: 800px;
-  margin: 2rem auto;
   padding: 2rem;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 1400px;
+  margin: 0 auto;
+  margin-top: 80px;
 
   .profile-header {
     display: flex;
@@ -78,6 +76,7 @@
       margin: 0;
       color: #333;
       font-size: 1.8rem;
+      margin-left: 30px;
     }
   }
 
@@ -208,6 +207,21 @@
         &:hover {
           background: #357abd;
         }
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+
+        .spinner {
+          animation: spin 1s linear infinite;
+          font-size: 16px;
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
       }
 
       &.btn-secondary {
@@ -216,6 +230,11 @@
 
         &:hover {
           background: #e0e0e0;
+        }
+
+        &:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
       }
     }
@@ -296,6 +315,183 @@
       color: #666;
     }
   }
+
+  .profile-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .profile-main {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    height: fit-content;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .profile-sidebar {
+    position: sticky;
+    top: 2rem;
+    height: calc(100vh - 4rem);
+    overflow: hidden;
+    width: 100%;
+
+    .donation-history-section {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 1.5rem;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+
+      h2 {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        font-size: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+
+        .history-icon {
+          color: #e74c3c;
+        }
+      }
+
+      .loading-history {
+        text-align: center;
+        padding: 2rem 0;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        .spinner {
+          animation: spin 1s linear infinite;
+          color: #e74c3c;
+          font-size: 1.5rem;
+          margin-bottom: 1rem;
+        }
+      }
+
+      .donation-list {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+        margin: -0.5rem;
+        padding: 0.5rem;
+
+        &::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 3px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: #e74c3c;
+          border-radius: 3px;
+        }
+
+        .donation-card {
+          background: #f8f9fa;
+          border-radius: 8px;
+          padding: 1.5rem;
+          border-left: 4px solid #e74c3c;
+          margin-bottom: 1.2rem;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+
+          .donation-date {
+            color: #666;
+            font-size: 1rem;
+            margin-bottom: 0.8rem;
+          }
+
+          .donation-details {
+            margin-bottom: 0.5rem;
+
+            p {
+              margin: 0.4rem 0;
+              font-size: 1rem;
+
+              &.recipient-name {
+                color: #2c3e50;
+                font-weight: 500;
+                font-size: 1.1rem;
+              }
+
+              &.blood-info {
+                color: #e74c3c;
+                font-weight: 500;
+                font-size: 1.1rem;
+              }
+            }
+          }
+
+          .donation-status {
+            .status {
+              display: inline-block;
+              padding: 0.25rem 0.75rem;
+              border-radius: 12px;
+              font-size: 0.875rem;
+              font-weight: 500;
+
+              &.completed {
+                background: #d4edda;
+                color: #155724;
+              }
+
+              &.pending {
+                background: #fff3cd;
+                color: #856404;
+              }
+
+              &.cancelled {
+                background: #f8d7da;
+                color: #721c24;
+              }
+            }
+          }
+        }
+      }
+
+      .no-donations {
+        text-align: center;
+        padding: 2rem 0;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+
+        p {
+          margin: 0.5rem 0;
+
+          &:last-child {
+            color: #e74c3c;
+            font-weight: 500;
+          }
+        }
+      }
+    }
+  }
 }
 
 @keyframes spin {
@@ -329,21 +525,12 @@
 }
 
 .profile-container {
-  max-width: 1200px;
+  max-width: 800px;
   margin: 80px auto 0;
   padding: 20px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 30px;
-
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
-.profile-section,
-.organization-section,
-.organization-status {
+.profile-section {
   background: white;
   padding: 30px;
   border-radius: 10px;
@@ -356,54 +543,101 @@
   }
 }
 
-.form-group {
-  margin-bottom: 20px;
-
-  label {
-    display: block;
-    margin-bottom: 8px;
-    color: #555;
-    font-weight: 500;
-  }
-
-  input,
-  textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+.profile-info {
+  p {
+    margin: 15px 0;
+    color: #666;
     font-size: 1rem;
+    line-height: 1.5;
 
-    &:focus {
-      outline: none;
-      border-color: #007bff;
-      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+    strong {
+      color: #333;
+      margin-right: 8px;
+      min-width: 100px;
+      display: inline-block;
     }
   }
 
-  textarea {
-    min-height: 100px;
-    resize: vertical;
+  .organization-badge {
+    color: #28a745;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  button {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: #c82333;
+    }
   }
 }
 
-button {
-  background: #007bff;
-  color: white;
-  padding: 12px 24px;
-  border: none;
-  border-radius: 5px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
+.profile-form {
+  .form-group {
+    margin-bottom: 20px;
 
-  &:hover {
-    background: #0056b3;
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 1rem;
+
+      &:focus {
+        outline: none;
+        border-color: #dc3545;
+        box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+      }
+    }
   }
+}
 
-  &:disabled {
-    background: #ccc;
-    cursor: not-allowed;
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+
+  button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &.btn-primary {
+      background: #dc3545;
+      color: white;
+
+      &:hover {
+        background: #c82333;
+      }
+    }
+
+    &.btn-secondary {
+      background: #6c757d;
+      color: white;
+
+      &:hover {
+        background: #5a6268;
+      }
+    }
   }
 }
 
@@ -430,16 +664,4 @@ button {
   border: 1px solid #c3e6cb;
   border-radius: 5px;
   margin-bottom: 20px;
-}
-
-.organization-status {
-  p {
-    margin: 10px 0;
-    color: #666;
-
-    &:first-child {
-      font-weight: 500;
-      color: #333;
-    }
-  }
 }

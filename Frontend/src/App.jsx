@@ -14,6 +14,9 @@ import UserProfile from "./Pages/User/UserProfile";
 import BloodRequests from "./Pages/BloodRequests/BloodRequests";
 import Campaigns from "./Pages/Campaigns/Campaigns";
 import AdminCampaigns from "./Pages/Admin/AdminCampaigns";
+import BloodStock from "./Pages/BloodStock/BloodStock";
+import OrganizationDetails from "./Pages/Organization/OrganizationDetails";
+import OrganizationStocks from "./Pages/Organization/OrganizationStocks";
 
 // Protected route component for admin routes
 const ProtectedAdminRoute = ({ children }) => {
@@ -75,7 +78,16 @@ function App() {
               </ProtectedRoute>
             }
           />
-
+          <Route
+            path="/blood-stock"
+            element={
+              <ProtectedRoute>
+                <BloodStock />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/organizations" element={<OrganizationStocks />} />
+          <Route path="/organizations/:id" element={<OrganizationDetails />} />
           <Route
             path="/admin/campaigns"
             element={

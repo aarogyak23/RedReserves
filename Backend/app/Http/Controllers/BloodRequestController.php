@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BloodRequest;
 use App\Models\User;
+use App\Models\Donation;
 use App\Notifications\BloodRequestApproved;
 use App\Notifications\NewDonorNotification;
 use App\Notifications\DonorStatusUpdated;
@@ -386,6 +387,25 @@ class BloodRequestController extends Controller
                 'donor_id' => $donor->id,
                 'new_status' => $validatedData['status']
             ]);
+
+            // Create donation record if donor is approved
+            if ($validatedData['status'] === 'approved') {
+                \Log::info('Creating donation record for approved donor');
+                
+                $donation = \App\Models\Donation::create([
+                    'donor_id' => $donor->user_id,
+                    'request_id' => $requestId,
+                    'status' => 'completed',
+                    'donation_date' => now(),
+                    'notes' => $validatedData['remarks'] ?? null
+                ]);
+
+                \Log::info('Donation record created:', [
+                    'donation_id' => $donation->id,
+                    'donor_id' => $donor->user_id,
+                    'request_id' => $requestId
+                ]);
+            }
 
             // Send notification to the donor
             $donorUser = $donor->user;

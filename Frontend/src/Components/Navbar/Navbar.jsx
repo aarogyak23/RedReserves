@@ -16,7 +16,8 @@ export const Navbar = () => {
       const userData = localStorage.getItem("user");
       setIsAuthenticated(!!token);
       if (userData) {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
       }
     };
 

@@ -88,4 +88,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(OrganizationRequest::class);
     }
+
+    public function bloodStocks()
+    {
+        return $this->hasMany(BloodStock::class, 'organization_id');
+    }
 }

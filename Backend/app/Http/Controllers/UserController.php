@@ -106,18 +106,23 @@ class UserController extends Controller
         }
     }
 
-    public function getProfile(Request $request)
+    public function show(Request $request)
     {
         try {
-            $user = $request->user();
-            if (!$user) {
-                return response()->json(['message' => 'User not found'], 404);
+            $user = auth()->user();
+            $userData = $user->toArray();
+            
+            // Add the full URL for profile picture if it exists
+            if ($user->profile_picture) {
+                $userData['profile_picture_url'] = asset('storage/' . $user->profile_picture);
+                \Log::info('Profile picture URL in show: ' . $userData['profile_picture_url']);
             }
-            return response()->json($user);
+
+            return response()->json($userData);
         } catch (\Exception $e) {
             \Log::error('Error fetching user profile: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Error fetching profile',
+                'message' => 'Failed to fetch user profile',
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -128,29 +133,21 @@ class UserController extends Controller
         try {
             $user = $request->user();
             
-            // Log the incoming request data
-            \Log::info('Profile update request data', ['data' => $request->all()]);
-            \Log::info('Request headers', ['headers' => $request->headers->all()]);
-            \Log::info('Request content type', ['content_type' => $request->header('Content-Type')]);
-
-            // Validate the request data
+            // Validate the request data - all fields are optional
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email,' . $user->id,
+                'name' => 'sometimes|string|max:255',
+                'last_name' => 'sometimes|string|max:255',
+                'email' => 'sometimes|email|unique:users,email,' . $user->id,
                 'phone_number' => 'nullable|string|max:20',
                 'address' => 'nullable|string|max:255',
                 'city' => 'nullable|string|max:100',
                 'state' => 'nullable|string|max:100',
                 'country' => 'nullable|string|max:100',
                 'postal_code' => 'nullable|string|max:20',
-                'blood_group' => 'required|string|max:10',
+                'blood_group' => 'sometimes|string|max:10',
                 'current_password' => 'nullable|required_with:new_password',
-                'new_password' => 'nullable|min:8|confirmed',
-                'profile_image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+                'new_password' => 'nullable|min:8|confirmed'
             ]);
-
-            \Log::info('Validation passed', ['validated_data' => $validated]);
 
             // Handle password update if provided
             if (!empty($request->current_password)) {
@@ -162,63 +159,26 @@ class UserController extends Controller
                 $user->password = Hash::make($request->new_password);
             }
 
-            // Handle profile image upload if provided
-            if ($request->hasFile('profile_image')) {
-                try {
-                    \Log::info('Processing profile image upload');
-                    
-                    // Delete old profile picture if exists
-                    if ($user->profile_picture) {
-                        \Log::info('Deleting old profile picture', ['path' => $user->profile_picture]);
-                        Storage::disk('public')->delete($user->profile_picture);
-                    }
-                    
-                    // Store the new profile image
-                    $path = $request->file('profile_image')->store('profile-images', 'public');
-                    \Log::info('New profile image stored', ['path' => $path]);
-                    $user->profile_picture = $path;
-                } catch (\Exception $e) {
-                    \Log::error('Error handling profile image', [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                    return response()->json([
-                        'message' => 'Error uploading profile image',
-                        'error' => $e->getMessage()
-                    ], 500);
-                }
-            }
-
-            // Remove password and image fields from validated data
+            // Remove password fields from validated data
             unset($validated['current_password']);
             unset($validated['new_password']);
             unset($validated['new_password_confirmation']);
-            unset($validated['profile_image']);
 
             // Update user data
             $user->fill($validated);
             $user->save();
-
-            // Add the full URL for the profile image
-            $user->profile_image_url = $user->profile_picture ? Storage::url($user->profile_picture) : null;
-
-            \Log::info('Profile updated successfully', ['user_id' => $user->id]);
 
             return response()->json([
                 'message' => 'Profile updated successfully',
                 'user' => $user
             ]);
         } catch (ValidationException $e) {
-            \Log::error('Validation error in profile update', ['errors' => $e->errors()]);
             return response()->json([
                 'message' => 'Validation error',
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Error updating profile', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            \Log::error('Error updating profile: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error updating profile',
                 'error' => $e->getMessage()
@@ -281,6 +241,64 @@ class UserController extends Controller
                 'message' => 'Error fetching organization status',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function getOrganizationDetails($id)
+    {
+        try {
+            // Clean the ID by removing any text after colon
+            $cleanId = explode(':', $id)[0];
+            \Log::info('Fetching organization details for ID: ' . $cleanId);
+
+            // First check if user exists
+            $user = User::find($cleanId);
+            if (!$user) {
+                \Log::error('User not found with ID: ' . $cleanId);
+                return response()->json(['message' => 'Organization not found'], 404);
+            }
+
+            // Then check if user is an organization
+            if (!$user->is_organization) {
+                \Log::error('User is not an organization. User ID: ' . $cleanId);
+                return response()->json(['message' => 'User is not an organization'], 404);
+            }
+
+            $organization = User::where('id', $cleanId)
+                ->where('is_organization', true)
+                ->with(['bloodStocks' => function($query) {
+                    $query->select('id', 'organization_id', 'blood_group', 'quantity', 'updated_at');
+                }])
+                ->select(
+                    'id',
+                    'organization_name',
+                    'phone_number',
+                    'address',
+                    'email'
+                )
+                ->first();
+
+            if (!$organization) {
+                \Log::error('Organization not found after fetching details. User ID: ' . $cleanId);
+                return response()->json(['message' => 'Organization not found'], 404);
+            }
+
+            \Log::info('Successfully fetched organization details', [
+                'org_id' => $organization->id,
+                'org_name' => $organization->organization_name,
+                'blood_stocks_count' => $organization->bloodStocks->count()
+            ]);
+
+            return response()->json($organization);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching organization details: ' . $e->getMessage(), [
+                'id' => $id,
+                'clean_id' => $cleanId ?? null,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Error fetching organization details: ' . $e->getMessage()], 500);
         }
     }
 }

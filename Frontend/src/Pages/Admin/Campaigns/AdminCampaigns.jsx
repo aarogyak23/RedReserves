@@ -9,6 +9,7 @@ const AdminCampaigns = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
   const [showCampaignForm, setShowCampaignForm] = useState(false);
   const [newCampaign, setNewCampaign] = useState({
     title: "",
@@ -24,7 +25,79 @@ const AdminCampaigns = () => {
 
   useEffect(() => {
     fetchCampaigns();
+    const statusInterval = setInterval(updateCampaignStatuses, 60000);
+    return () => clearInterval(statusInterval);
   }, []);
+
+  const updateCampaignStatuses = () => {
+    const now = new Date();
+    setCampaigns((prevCampaigns) =>
+      prevCampaigns.map((campaign) => {
+        const endDate = new Date(campaign.end_date);
+        const startDate = new Date(campaign.start_date);
+
+        if (endDate < now) {
+          return { ...campaign, status: "completed" };
+        } else if (startDate > now) {
+          return { ...campaign, status: "upcoming" };
+        } else {
+          return { ...campaign, status: "active" };
+        }
+      })
+    );
+  };
+
+  const getCurrentDateTime = () => {
+    const now = new Date();
+    // Ensure we're working with local time
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const handleDateInput = (e) => {
+    const { name, value } = e.target;
+    const selectedDate = new Date(value);
+    const now = new Date();
+
+    // Reset hours, minutes, seconds, and milliseconds for current date
+    now.setHours(0, 0, 0, 0);
+    selectedDate.setHours(0, 0, 0, 0);
+
+    if (selectedDate < now) {
+      setFormError("Cannot select a date in the past");
+      return;
+    }
+
+    handleCampaignInputChange(e);
+  };
+
+  const validateDates = (startDate, endDate) => {
+    if (!startDate || !endDate) return null;
+
+    const now = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Reset time components for date comparison
+    now.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+
+    if (start < now) {
+      return "Campaign start date cannot be in the past";
+    }
+
+    if (end < start) {
+      return "End date must be after start date";
+    }
+
+    return null;
+  };
 
   const fetchCampaigns = async () => {
     try {
@@ -55,6 +128,8 @@ const AdminCampaigns = () => {
 
   const handleCampaignInputChange = (e) => {
     const { name, value, files } = e.target;
+    setFormError("");
+
     if (name === "image") {
       const file = files[0];
       setNewCampaign((prev) => ({
@@ -63,27 +138,75 @@ const AdminCampaigns = () => {
         image_preview: URL.createObjectURL(file),
       }));
     } else {
-      setNewCampaign((prev) => ({
-        ...prev,
+      const updatedCampaign = {
+        ...newCampaign,
         [name]: value,
-      }));
+      };
+
+      // Validate dates immediately when either date field changes
+      if (name === "start_date" || name === "end_date") {
+        const dateError = validateDates(
+          updatedCampaign.start_date,
+          updatedCampaign.end_date
+        );
+        if (dateError) {
+          setFormError(dateError);
+        }
+      }
+
+      setNewCampaign(updatedCampaign);
     }
+  };
+
+  const formatDateForServer = (dateString) => {
+    const date = new Date(dateString);
+    return date.toISOString().slice(0, 19).replace("T", " ");
   };
 
   const handleCreateCampaign = async (e) => {
     e.preventDefault();
+
+    const dateError = validateDates(
+      newCampaign.start_date,
+      newCampaign.end_date
+    );
+    if (dateError) {
+      setFormError(dateError);
+      return;
+    }
+
     try {
       const token = localStorage.getItem("adminToken");
       const formData = new FormData();
+
+      // Format dates for the server
+      const formattedStartDate = formatDateForServer(newCampaign.start_date);
+      const formattedEndDate = formatDateForServer(newCampaign.end_date);
+
       formData.append("title", newCampaign.title);
       formData.append("description", newCampaign.description);
-      formData.append("start_date", newCampaign.start_date);
-      formData.append("end_date", newCampaign.end_date);
+      formData.append("start_date", formattedStartDate);
+      formData.append("end_date", formattedEndDate);
       formData.append("location", newCampaign.location);
-      formData.append("status", newCampaign.status);
+
+      const now = new Date();
+      const startDate = new Date(newCampaign.start_date);
+      const status = startDate > now ? "upcoming" : "active";
+      formData.append("status", status);
+
       if (newCampaign.image) {
         formData.append("image", newCampaign.image);
       }
+
+      // Debug log
+      console.log("Sending campaign data:", {
+        title: newCampaign.title,
+        description: newCampaign.description,
+        start_date: formattedStartDate,
+        end_date: formattedEndDate,
+        location: newCampaign.location,
+        status: status,
+      });
 
       const response = await axios.post(
         `${API_URL}/api/admin/campaigns`,
@@ -109,10 +232,25 @@ const AdminCampaigns = () => {
           image: null,
           image_preview: null,
         });
+        setFormError("");
       }
     } catch (error) {
-      console.error("Error creating campaign:", error);
-      setError(error.response?.data?.message || "Failed to create campaign");
+      console.error("Error creating campaign:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+
+      let errorMessage = "Failed to create campaign. ";
+      if (error.response?.data?.message) {
+        errorMessage += error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage += error.response.data.error;
+      } else if (error.message) {
+        errorMessage += error.message;
+      }
+
+      setError(errorMessage);
     }
   };
 
@@ -154,7 +292,10 @@ const AdminCampaigns = () => {
         <h1>Campaign Management</h1>
         <button
           className="create-campaign-btn"
-          onClick={() => setShowCampaignForm(!showCampaignForm)}
+          onClick={() => {
+            setShowCampaignForm(!showCampaignForm);
+            setFormError("");
+          }}
         >
           {showCampaignForm ? "Cancel" : "Create New Campaign"}
         </button>
@@ -169,6 +310,11 @@ const AdminCampaigns = () => {
 
       {showCampaignForm && (
         <form onSubmit={handleCreateCampaign} className="campaign-form">
+          {formError && (
+            <div className="form-error-message">
+              <p>{formError}</p>
+            </div>
+          )}
           <div className="form-group">
             <label>Title:</label>
             <input
@@ -194,7 +340,9 @@ const AdminCampaigns = () => {
               type="datetime-local"
               name="start_date"
               value={newCampaign.start_date}
-              onChange={handleCampaignInputChange}
+              onChange={handleDateInput}
+              min={getCurrentDateTime()}
+              onKeyDown={(e) => e.preventDefault()}
               required
             />
           </div>
@@ -204,7 +352,9 @@ const AdminCampaigns = () => {
               type="datetime-local"
               name="end_date"
               value={newCampaign.end_date}
-              onChange={handleCampaignInputChange}
+              onChange={handleDateInput}
+              min={newCampaign.start_date || getCurrentDateTime()}
+              onKeyDown={(e) => e.preventDefault()}
               required
             />
           </div>
@@ -232,7 +382,13 @@ const AdminCampaigns = () => {
               </div>
             )}
           </div>
-          <button type="submit" className="submit-btn">
+          <button
+            type="submit"
+            className="submit-btn"
+            disabled={
+              !!formError || !newCampaign.start_date || !newCampaign.end_date
+            }
+          >
             Create Campaign
           </button>
         </form>
