@@ -12,7 +12,11 @@ import {
   FaHandHoldingHeart,
   FaCalendarAlt,
 } from "react-icons/fa";
+import { Pie } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import "./AdminDashboard.scss";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -40,6 +44,10 @@ const AdminDashboard = () => {
     status: "active",
     image: null,
     image_preview: null,
+  });
+  const [userStats, setUserStats] = useState({
+    organizations: 0,
+    individuals: 0,
   });
   const navigate = useNavigate();
 
@@ -497,6 +505,69 @@ const AdminDashboard = () => {
     );
   };
 
+  const sideNavItems = [
+    { id: "dashboard", icon: <FaUsers />, text: "Dashboard" },
+    { id: "users", icon: <FaUsers />, text: "Registered Users" },
+    { id: "requests", icon: <FaTint />, text: "Blood Requests" },
+    { id: "org-requests", icon: <FaBuilding />, text: "Organization Requests" },
+    { id: "donors", icon: <FaHandHoldingHeart />, text: "Donor Submissions" },
+    { id: "campaigns", icon: <FaCalendarAlt />, text: "Campaign Management" },
+  ];
+
+  // Set dashboard as the default selected card when component mounts
+  useEffect(() => {
+    setSelectedCard("dashboard");
+  }, []);
+
+  useEffect(() => {
+    // Calculate user statistics when users array changes
+    const orgCount = users.filter((user) => user.is_organization).length;
+    const indCount = users.filter((user) => !user.is_organization).length;
+    setUserStats({
+      organizations: orgCount,
+      individuals: indCount,
+    });
+  }, [users]);
+
+  const pieChartData = {
+    labels: ["Organizations", "Individual Users"],
+    datasets: [
+      {
+        data: [userStats.organizations, userStats.individuals],
+        backgroundColor: [
+          "#e74c3c", // Red for organizations
+          "#3498db", // Blue for individuals
+        ],
+        borderColor: ["#c0392b", "#2980b9"],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const pieChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "bottom",
+        labels: {
+          font: {
+            size: 14,
+            family: "'Poppins', sans-serif",
+          },
+        },
+      },
+      title: {
+        display: true,
+        text: "User Distribution",
+        font: {
+          size: 16,
+          family: "'Poppins', sans-serif",
+          weight: "600",
+        },
+      },
+    },
+  };
+
   if (loading) {
     return (
       <div className="loading">
@@ -532,489 +603,536 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      <div className="main-content">
-        <div className="cards-grid">
-          <div
-            className={`card ${selectedCard === "users" ? "selected" : ""}`}
-            onClick={() =>
-              setSelectedCard(selectedCard === "users" ? null : "users")
-            }
-          >
-            <div className="card-content">
-              <div className="card-info">
-                <div className="icon-wrapper">
-                  <FaUsers />
-                </div>
-                <div className="text-content">
-                  <h2>Registered Users</h2>
-                  <p>{users.length}</p>
-                </div>
-              </div>
-              <div className="arrow">
-                {selectedCard === "users" ? "▼" : "▶"}
-              </div>
+      <div className="dashboard-container">
+        <div className="side-nav">
+          {sideNavItems.map((item) => (
+            <div
+              key={item.id}
+              className={`nav-item ${selectedCard === item.id ? "active" : ""}`}
+              onClick={() =>
+                setSelectedCard(selectedCard === item.id ? null : item.id)
+              }
+            >
+              <span className="icon">{item.icon}</span>
+              <span className="text">{item.text}</span>
             </div>
-          </div>
-
-          <div
-            className={`card ${selectedCard === "requests" ? "selected" : ""}`}
-            onClick={() =>
-              setSelectedCard(selectedCard === "requests" ? null : "requests")
-            }
-          >
-            <div className="card-content">
-              <div className="card-info">
-                <div className="icon-wrapper">
-                  <FaTint />
-                </div>
-                <div className="text-content">
-                  <h2>Blood Requests</h2>
-                  <p>{bloodRequests.length}</p>
-                </div>
-              </div>
-              <div className="arrow">
-                {selectedCard === "requests" ? "▼" : "▶"}
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`card ${
-              selectedCard === "org-requests" ? "selected" : ""
-            }`}
-            onClick={() =>
-              setSelectedCard(
-                selectedCard === "org-requests" ? null : "org-requests"
-              )
-            }
-          >
-            <div className="card-content">
-              <div className="card-info">
-                <div className="icon-wrapper">
-                  <FaBuilding />
-                </div>
-                <div className="text-content">
-                  <h2>Organization Requests</h2>
-                  <p>
-                    {
-                      orgRequests.filter((req) => req.status === "pending")
-                        .length
-                    }
-                  </p>
-                </div>
-              </div>
-              <div className="arrow">
-                {selectedCard === "org-requests" ? "▼" : "▶"}
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`card ${selectedCard === "donors" ? "selected" : ""}`}
-            onClick={() =>
-              setSelectedCard(selectedCard === "donors" ? null : "donors")
-            }
-          >
-            <div className="card-content">
-              <div className="card-info">
-                <div className="icon-wrapper">
-                  <FaHandHoldingHeart />
-                </div>
-                <div className="text-content">
-                  <h2>Donor Submissions</h2>
-                  <p>{donorSubmissions.length}</p>
-                </div>
-              </div>
-              <div className="arrow">
-                {selectedCard === "donors" ? "▼" : "▶"}
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`card ${selectedCard === "campaigns" ? "selected" : ""}`}
-            onClick={() =>
-              setSelectedCard(selectedCard === "campaigns" ? null : "campaigns")
-            }
-          >
-            <div className="card-content">
-              <div className="card-info">
-                <div className="icon-wrapper">
-                  <FaCalendarAlt />
-                </div>
-                <div className="text-content">
-                  <h2>Campaign Management</h2>
-                  <p>{campaigns.length} Campaigns</p>
-                </div>
-              </div>
-              <div className="arrow">
-                {selectedCard === "campaigns" ? "▼" : "▶"}
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="content-area">
-          <div className="search-filter-bar">
-            <div className="search-input">
-              <FaSearch />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+        <div className="main-content">
+          {selectedCard === "dashboard" && (
+            <div className="dashboard-view">
+              <div className="cards-grid">
+                <div className="card">
+                  <div className="card-content">
+                    <div className="card-info">
+                      <div className="icon-wrapper">
+                        <FaUsers />
+                      </div>
+                      <div className="text-content">
+                        <h2>Registered Users</h2>
+                        <p>{users.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card-content">
+                    <div className="card-info">
+                      <div className="icon-wrapper">
+                        <FaTint />
+                      </div>
+                      <div className="text-content">
+                        <h2>Blood Requests</h2>
+                        <p>{bloodRequests.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card-content">
+                    <div className="card-info">
+                      <div className="icon-wrapper">
+                        <FaBuilding />
+                      </div>
+                      <div className="text-content">
+                        <h2>Organization Requests</h2>
+                        <p>
+                          {
+                            orgRequests.filter(
+                              (req) => req.status === "pending"
+                            ).length
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card-content">
+                    <div className="card-info">
+                      <div className="icon-wrapper">
+                        <FaHandHoldingHeart />
+                      </div>
+                      <div className="text-content">
+                        <h2>Donor Submissions</h2>
+                        <p>{donorSubmissions.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div className="card-content">
+                    <div className="card-info">
+                      <div className="icon-wrapper">
+                        <FaCalendarAlt />
+                      </div>
+                      <div className="text-content">
+                        <h2>Campaign Management</h2>
+                        <p>{campaigns.length} Campaigns</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dashboard-charts">
+                <div className="chart-container">
+                  <div className="pie-chart">
+                    <Pie data={pieChartData} options={pieChartOptions} />
+                  </div>
+                </div>
+                <div className="recent-activity">
+                  <h2>Recent Activity</h2>
+                  <div className="activity-list">
+                    {/* Add recent blood requests */}
+                    <div className="activity-section">
+                      <h3>Latest Blood Requests</h3>
+                      <div className="table-container">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Requester</th>
+                              <th>Blood Group</th>
+                              <th>Status</th>
+                              <th>Date</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bloodRequests.slice(0, 5).map((request) => (
+                              <tr key={request.id}>
+                                <td>
+                                  <div className="user-info">
+                                    <div className="avatar">
+                                      {request.first_name[0]}
+                                      {request.last_name[0]}
+                                    </div>
+                                    <div className="name">
+                                      {request.first_name} {request.last_name}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className="status-badge pending">
+                                    {request.blood_group}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span
+                                    className={`status-badge ${request.status}`}
+                                  >
+                                    {request.status}
+                                  </span>
+                                </td>
+                                <td>
+                                  {new Date(
+                                    request.created_at
+                                  ).toLocaleDateString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            {selectedCard === "requests" && (
-              <div className="filter-section">
-                <FaFilter />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
+          )}
+
+          <div className="content-area">
+            <div className="search-filter-bar">
+              <div className="search-input">
+                <FaSearch />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              {selectedCard === "requests" && (
+                <div className="filter-section">
+                  <FaFilter />
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {selectedCard === "org-requests" && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Organization Name</th>
+                      <th>Applicant</th>
+                      <th>Contact</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orgRequests.map((request) => (
+                      <tr key={request.id}>
+                        <td>{request.organization_name}</td>
+                        <td>
+                          <div className="user-info">
+                            <div className="avatar">
+                              {request.user.name[0]}
+                              {request.user.last_name[0]}
+                            </div>
+                            <div className="name">
+                              {request.user.name} {request.user.last_name}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <p>{request.organization_phone}</p>
+                          <p>{request.organization_address}</p>
+                        </td>
+                        <td>
+                          <span className={`status-badge ${request.status}`}>
+                            {request.status}
+                          </span>
+                        </td>
+                        <td>
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </td>
+                        <td>
+                          {request.status === "pending" && (
+                            <div className="action-buttons">
+                              <button
+                                className="approve"
+                                onClick={() => {
+                                  setSelectedOrgRequest(request);
+                                  setIsOrgModalOpen(true);
+                                }}
+                              >
+                                Review
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-          </div>
 
-          {selectedCard === "org-requests" && (
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Organization Name</th>
-                    <th>Applicant</th>
-                    <th>Contact</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orgRequests.map((request) => (
-                    <tr key={request.id}>
-                      <td>{request.organization_name}</td>
-                      <td>
-                        <div className="user-info">
-                          <div className="avatar">
-                            {request.user.name[0]}
-                            {request.user.last_name[0]}
-                          </div>
-                          <div className="name">
-                            {request.user.name} {request.user.last_name}
-                          </div>
+            {selectedCard === "users" && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        <div className="header-cell">
+                          <span>Name</span>
+                          <FaSort />
                         </div>
-                      </td>
-                      <td>
-                        <p>{request.organization_phone}</p>
-                        <p>{request.organization_address}</p>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${request.status}`}>
-                          {request.status}
-                        </span>
-                      </td>
-                      <td>
-                        {new Date(request.created_at).toLocaleDateString()}
-                      </td>
-                      <td>
-                        {request.status === "pending" && (
-                          <div className="action-buttons">
-                            <button
-                              className="approve"
-                              onClick={() => {
-                                setSelectedOrgRequest(request);
-                                setIsOrgModalOpen(true);
-                              }}
-                            >
-                              Review
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                      </th>
+                      <th>
+                        <div className="header-cell">
+                          <span>Email</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>
+                        <div className="header-cell">
+                          <span>Blood Group</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>
+                        <div className="header-cell">
+                          <span>Location</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>
+                        <div className="header-cell">
+                          <span>Type</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {selectedCard === "users" && (
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <div className="header-cell">
-                        <span>Name</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>
-                      <div className="header-cell">
-                        <span>Email</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>
-                      <div className="header-cell">
-                        <span>Blood Group</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>
-                      <div className="header-cell">
-                        <span>Location</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>
-                      <div className="header-cell">
-                        <span>Type</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id}>
-                      <td>
-                        <div className="user-info">
-                          <div className="avatar">
-                            {user.name[0]}
-                            {user.last_name[0]}
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id}>
+                        <td>
+                          <div className="user-info">
+                            <div className="avatar">
+                              {user.name[0]}
+                              {user.last_name[0]}
+                            </div>
+                            <div className="name">
+                              {user.name} {user.last_name}
+                            </div>
                           </div>
-                          <div className="name">
-                            {user.name} {user.last_name}
-                          </div>
-                        </div>
-                      </td>
-                      <td>{user.email}</td>
-                      <td>
-                        <span className="status-badge pending">
-                          {user.blood_group}
-                        </span>
-                      </td>
-                      <td>
-                        {user.city}, {user.state}, {user.country}
-                      </td>
-                      <td>
-                        <span
-                          className={`status-badge ${
-                            user.is_organization ? "organization" : "individual"
-                          }`}
-                        >
-                          {user.is_organization ? "Organization" : "Individual"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="edit-btn"
-                            onClick={() => handleEditUser(user)}
+                        </td>
+                        <td>{user.email}</td>
+                        <td>
+                          <span className="status-badge pending">
+                            {user.blood_group}
+                          </span>
+                        </td>
+                        <td>
+                          {user.city}, {user.state}, {user.country}
+                        </td>
+                        <td>
+                          <span
+                            className={`status-badge ${
+                              user.is_organization
+                                ? "organization"
+                                : "individual"
+                            }`}
                           >
-                            Edit
-                          </button>
-                          {!user.is_organization && (
+                            {user.is_organization
+                              ? "Organization"
+                              : "Individual"}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="action-buttons">
                             <button
-                              className="convert-btn"
-                              onClick={() => handleConvertToOrganization(user)}
+                              className="edit-btn"
+                              onClick={() => handleEditUser(user)}
                             >
-                              Convert to Organization
+                              Edit
                             </button>
+                            {!user.is_organization && (
+                              <button
+                                className="convert-btn"
+                                onClick={() =>
+                                  handleConvertToOrganization(user)
+                                }
+                              >
+                                Convert to Organization
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {selectedCard === "requests" && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>
+                        <div className="header-cell">
+                          <span>Requester</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>
+                        <div className="header-cell">
+                          <span>Blood Group</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>
+                        <div className="header-cell">
+                          <span>Status</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>
+                        <div className="header-cell">
+                          <span>Date</span>
+                          <FaSort />
+                        </div>
+                      </th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRequests.map((request) => (
+                      <tr key={request.id}>
+                        <td>
+                          <div className="user-info">
+                            <div className="avatar">
+                              {request.first_name[0]}
+                              {request.last_name[0]}
+                            </div>
+                            <div className="name">
+                              {request.first_name} {request.last_name}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="status-badge pending">
+                            {request.blood_group}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`status-badge ${request.status}`}>
+                            {request.status}
+                          </span>
+                        </td>
+                        <td>
+                          {new Date(request.created_at).toLocaleDateString()}
+                        </td>
+                        <td>
+                          {request.status === "pending" && (
+                            <div className="action-buttons">
+                              <button
+                                className="approve"
+                                onClick={() =>
+                                  handleStatusUpdate(request.id, "approved")
+                                }
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="reject"
+                                onClick={() =>
+                                  handleStatusUpdate(request.id, "rejected")
+                                }
+                              >
+                                Reject
+                              </button>
+                            </div>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          {selectedCard === "requests" && (
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>
-                      <div className="header-cell">
-                        <span>Requester</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>
-                      <div className="header-cell">
-                        <span>Blood Group</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>
-                      <div className="header-cell">
-                        <span>Status</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>
-                      <div className="header-cell">
-                        <span>Date</span>
-                        <FaSort />
-                      </div>
-                    </th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRequests.map((request) => (
-                    <tr key={request.id}>
-                      <td>
-                        <div className="user-info">
-                          <div className="avatar">
-                            {request.first_name[0]}
-                            {request.last_name[0]}
-                          </div>
-                          <div className="name">
-                            {request.first_name} {request.last_name}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="status-badge pending">
-                          {request.blood_group}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${request.status}`}>
-                          {request.status}
-                        </span>
-                      </td>
-                      <td>
-                        {new Date(request.created_at).toLocaleDateString()}
-                      </td>
-                      <td>
-                        {request.status === "pending" && (
-                          <div className="action-buttons">
-                            <button
-                              className="approve"
-                              onClick={() =>
-                                handleStatusUpdate(request.id, "approved")
-                              }
-                            >
-                              Approve
-                            </button>
-                            <button
-                              className="reject"
-                              onClick={() =>
-                                handleStatusUpdate(request.id, "rejected")
-                              }
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
-                      </td>
+            {selectedCard === "donors" && (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Donor Name</th>
+                      <th>Blood Group</th>
+                      <th>Blood Request</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                      <th>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {selectedCard === "donors" && (
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Donor Name</th>
-                    <th>Blood Group</th>
-                    <th>Blood Request</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {donorSubmissions.map((submission) => (
-                    <tr key={submission.id}>
-                      <td>
-                        <div className="user-info">
-                          <div className="avatar">
-                            {submission.donor.name[0]}
+                  </thead>
+                  <tbody>
+                    {donorSubmissions.map((submission) => (
+                      <tr key={submission.id}>
+                        <td>
+                          <div className="user-info">
+                            <div className="avatar">
+                              {submission.donor.name[0]}
+                            </div>
+                            <div className="name">{submission.donor.name}</div>
                           </div>
-                          <div className="name">{submission.donor.name}</div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="status-badge pending">
-                          {submission.donor.blood_group}
-                        </span>
-                      </td>
-                      <td>
-                        <p>
-                          <strong>Request ID:</strong>{" "}
-                          {submission.blood_request.id}
-                        </p>
-                        <p>
-                          <strong>Requester:</strong>{" "}
-                          {submission.blood_request.requester_name}
-                        </p>
-                        <p>
-                          <strong>Hospital:</strong>{" "}
-                          {submission.blood_request.hospital_name}
-                        </p>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${submission.status}`}>
-                          {submission.status}
-                        </span>
-                      </td>
-                      <td>
-                        {new Date(submission.created_at).toLocaleDateString()}
-                      </td>
-                      <td>
-                        {submission.status === "pending" && (
-                          <div className="action-buttons">
-                            <button
-                              className="approve"
-                              onClick={() =>
-                                handleDonorStatusUpdate(
-                                  submission.blood_request_id,
-                                  submission.id,
-                                  "approved"
-                                )
-                              }
-                            >
-                              Approve
-                            </button>
-                            <button
-                              className="reject"
-                              onClick={() =>
-                                handleDonorStatusUpdate(
-                                  submission.blood_request_id,
-                                  submission.id,
-                                  "rejected"
-                                )
-                              }
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        </td>
+                        <td>
+                          <span className="status-badge pending">
+                            {submission.donor.blood_group}
+                          </span>
+                        </td>
+                        <td>
+                          <p>
+                            <strong>Request ID:</strong>{" "}
+                            {submission.blood_request.id}
+                          </p>
+                          <p>
+                            <strong>Requester:</strong>{" "}
+                            {submission.blood_request.requester_name}
+                          </p>
+                          <p>
+                            <strong>Hospital:</strong>{" "}
+                            {submission.blood_request.hospital_name}
+                          </p>
+                        </td>
+                        <td>
+                          <span className={`status-badge ${submission.status}`}>
+                            {submission.status}
+                          </span>
+                        </td>
+                        <td>
+                          {new Date(submission.created_at).toLocaleDateString()}
+                        </td>
+                        <td>
+                          {submission.status === "pending" && (
+                            <div className="action-buttons">
+                              <button
+                                className="approve"
+                                onClick={() =>
+                                  handleDonorStatusUpdate(
+                                    submission.blood_request_id,
+                                    submission.id,
+                                    "approved"
+                                  )
+                                }
+                              >
+                                Approve
+                              </button>
+                              <button
+                                className="reject"
+                                onClick={() =>
+                                  handleDonorStatusUpdate(
+                                    submission.blood_request_id,
+                                    submission.id,
+                                    "rejected"
+                                  )
+                                }
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-          {selectedCard === "campaigns" && renderCampaigns()}
+            {selectedCard === "campaigns" && renderCampaigns()}
+          </div>
         </div>
       </div>
 

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaBell, FaSpinner } from "react-icons/fa";
 import "./Notifications.scss";
@@ -12,7 +11,6 @@ export const Notifications = () => {
   const [error, setError] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchNotifications();
@@ -146,19 +144,17 @@ export const Notifications = () => {
 
         console.log("Action response:", response.data);
 
-        // Refresh notifications after action
-        await fetchNotifications();
+        // Mark notification as read
+        await markAsRead(notification.id);
+
+        // Remove this notification from the list
+        setNotifications((prevNotifications) =>
+          prevNotifications.filter((n) => n.id !== notification.id)
+        );
+
+        // Close the dropdown
+        setIsOpen(false);
       }
-
-      // Mark notification as read
-      await markAsRead(notification.id);
-
-      // Navigate if needed
-      if (action.url && action.method === "GET") {
-        navigate(action.url);
-      }
-
-      setIsOpen(false);
     } catch (error) {
       console.error("Error handling donor action:", error);
       if (error.response) {
@@ -173,49 +169,6 @@ export const Notifications = () => {
     }
   };
 
-  const formatNotificationMessage = (notification) => {
-    const data = notification.data;
-
-    switch (notification.type) {
-      case "App\\Notifications\\NewDonorNotification":
-        return {
-          title: data.title || "New Donor Available",
-          message: data.message,
-          actions: data.actions || [],
-          url: data.url || "/blood-requests",
-          icon: "donor",
-        };
-      case "App\\Notifications\\BloodRequestApproved":
-        return {
-          title: "Blood Request Approved",
-          message: data.message,
-          url: data.url || "/blood-requests",
-          icon: "approved",
-        };
-      case "App\\Notifications\\NewCampaignNotification":
-        return {
-          title: data.title || "New Campaign",
-          message: data.message,
-          url: "/campaigns",
-          icon: "campaign",
-        };
-      case "App\\Notifications\\CampaignUpdateNotification":
-        return {
-          title: data.title || "Campaign Update",
-          message: data.message,
-          url: "/campaigns",
-          icon: "campaign",
-        };
-      default:
-        return {
-          title: "Notification",
-          message: data.message,
-          url: data.url || "/",
-          icon: "default",
-        };
-    }
-  };
-
   const handleNotificationClick = async (notification) => {
     try {
       console.log("Clicking notification:", notification);
@@ -223,24 +176,17 @@ export const Notifications = () => {
       // Mark notification as read
       await markAsRead(notification.id);
 
-      // Get formatted notification data
-      const formattedNotification = formatNotificationMessage(notification);
-      console.log("Formatted notification:", formattedNotification);
+      // Update local state to reflect the notification is read
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((n) =>
+          n.id === notification.id
+            ? { ...n, read_at: new Date().toISOString() }
+            : n
+        )
+      );
 
-      // If it's a donor notification with actions, don't navigate automatically
-      if (
-        notification.type === "App\\Notifications\\NewDonorNotification" &&
-        notification.data.actions?.length > 0
-      ) {
-        return;
-      }
-
-      // Navigate to the URL if present
-      if (formattedNotification.url) {
-        console.log("Navigating to:", formattedNotification.url);
-        navigate(formattedNotification.url);
-        setIsOpen(false);
-      }
+      // Don't navigate, just close the notification panel
+      setIsOpen(false);
     } catch (error) {
       console.error("Error handling notification click:", error);
     }
