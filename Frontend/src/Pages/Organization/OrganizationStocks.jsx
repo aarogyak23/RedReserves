@@ -4,6 +4,7 @@ import axios from "axios";
 import "./OrganizationStocks.scss";
 import Navbar from "../../Components/Navbar/Navbar";
 import LoadingSpinner from "../../Components/LoadingSpinner/LoadingSpinner";
+import Footer from "../../Components/Footer/Footer";
 
 const OrganizationStocks = () => {
   const [organizations, setOrganizations] = useState([]);
@@ -116,6 +117,7 @@ const OrganizationStocks = () => {
           ))}
         </div>
       </div>
+      <Footer />
     </>
   );
 };

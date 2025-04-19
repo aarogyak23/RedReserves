@@ -18,36 +18,89 @@ const AdminCampaigns = () => {
     image: null,
   });
 
-  useEffect(() => {
-    fetchCampaigns();
-  }, []);
-
   const fetchCampaigns = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      const token = localStorage.getItem("adminToken");
-      const response = await axios.get(`${API_URL}/api/admin/campaigns`, {
+      console.log("Admin: Fetching campaigns...");
+      const response = await axios.get("/api/admin/campaigns", {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${localStorage.getItem("admin_token")}`,
         },
       });
 
-      // Check if response.data has a data property (common API structure)
-      const campaignsData = response.data.data || response.data;
+      if (response.data.status) {
+        const processedCampaigns = response.data.data.map((campaign) => ({
+          ...campaign,
+          interested_count: parseInt(campaign.interested_count) || 0,
+          not_interested_count: parseInt(campaign.not_interested_count) || 0,
+        }));
 
-      // Ensure we have an array
-      if (Array.isArray(campaignsData)) {
-        setCampaigns(campaignsData);
+        console.log("Admin: Campaigns fetched successfully", {
+          count: processedCampaigns.length,
+          sample: processedCampaigns[0],
+        });
+
+        setCampaigns(processedCampaigns);
       } else {
-        console.error("Invalid campaigns data format:", campaignsData);
-        setError("Invalid data format received from server");
+        console.error("Admin: Failed to fetch campaigns", response.data);
+        setError("Failed to fetch campaigns. Please try again.");
       }
-      setLoading(false);
     } catch (error) {
-      console.error("Failed to fetch campaigns:", error);
-      setError("Failed to fetch campaigns");
+      console.error(
+        "Admin: Error fetching campaigns:",
+        error.response?.data || error.message
+      );
+      setError(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch campaigns"
+      );
+    } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Initial fetch
+    fetchCampaigns();
+
+    // Set up polling interval (every 1 second)
+    const interval = setInterval(fetchCampaigns, 1000);
+
+    // Expose update function to window object
+    window.adminCampaignsUpdate = (updatedCampaign) => {
+      console.log(
+        "Admin: Updating campaign via window function",
+        updatedCampaign
+      );
+
+      setCampaigns((prevCampaigns) => {
+        const newCampaigns = prevCampaigns.map((campaign) => {
+          if (campaign.id === updatedCampaign.id) {
+            return {
+              ...campaign,
+              interested_count: parseInt(updatedCampaign.interested_count) || 0,
+              not_interested_count:
+                parseInt(updatedCampaign.not_interested_count) || 0,
+            };
+          }
+          return campaign;
+        });
+
+        // Trigger a fetch to ensure data consistency
+        setTimeout(fetchCampaigns, 100);
+
+        return newCampaigns;
+      });
+    };
+
+    return () => {
+      clearInterval(interval);
+      delete window.adminCampaignsUpdate;
+    };
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -125,9 +178,14 @@ const AdminCampaigns = () => {
     <div className="admin-campaigns-container">
       <div className="header">
         <h1>Manage Campaigns</h1>
-        <button className="create-btn" onClick={() => setShowForm(true)}>
-          Create New Campaign
-        </button>
+        <div className="header-actions">
+          <button className="refresh-btn" onClick={fetchCampaigns}>
+            Refresh Data
+          </button>
+          <button className="create-btn" onClick={() => setShowForm(true)}>
+            Create New Campaign
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -233,6 +291,20 @@ const AdminCampaigns = () => {
                   <strong>End Date:</strong>{" "}
                   {new Date(campaign.end_date).toLocaleDateString()}
                 </p>
+                <div className="interest-stats">
+                  <div className="stat-item interested">
+                    <strong>Interested</strong>
+                    <span className="count">
+                      {campaign.interested_count || 0}
+                    </span>
+                  </div>
+                  <div className="stat-item not-interested">
+                    <strong>Not Interested</strong>
+                    <span className="count">
+                      {campaign.not_interested_count || 0}
+                    </span>
+                  </div>
+                </div>
               </div>
               <button
                 className="delete-btn"

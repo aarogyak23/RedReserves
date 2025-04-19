@@ -8,6 +8,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\BloodStockController;
 use App\Http\Controllers\DonationController;
+use App\Http\Controllers\CampaignController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +28,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 // Public routes
 Route::post("/register", [AuthController::class, "register"]);
 Route::post("/login", [AuthController::class, "login"]);
+Route::get('/organizations/search', [UserController::class, 'searchOrganizations']);
 
 // User routes with auth:sanctum
 Route::middleware("auth:sanctum")->group(function () {
@@ -45,8 +47,9 @@ Route::middleware("auth:sanctum")->group(function () {
     Route::post('/notifications/{id}/read', [BloodRequestController::class, 'markNotificationAsRead']);
 
     // Campaign routes
-    Route::get('/campaigns', [AdminController::class, 'getCampaigns']);
-    Route::post('/campaigns/{id}/interest', [AdminController::class, 'updateCampaignInterest']);
+    Route::get('/campaigns', [CampaignController::class, 'index']);
+    Route::get('/campaigns/interests', [CampaignController::class, 'getUserInterests']);
+    Route::post('/campaigns/{campaign}/interest', [CampaignController::class, 'updateInterest']);
 
     // Admin routes
     Route::middleware('admin')->group(function () {
@@ -88,6 +91,3 @@ Route::prefix('admin')->group(function () {
         Route::delete('campaigns/{id}', [AdminController::class, 'deleteCampaign']);
     });
 });
-
-// Organization search route
-Route::middleware('auth:sanctum')->get('/organizations/search', [AdminController::class, 'searchOrganizations']);

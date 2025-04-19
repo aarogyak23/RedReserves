@@ -1,13 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../../utils/axiosConfig";
-import {
-  FaSearch,
-  FaBuilding,
-  FaPhone,
-  FaMapMarkerAlt,
-  FaTint,
-} from "react-icons/fa";
+import { FaSearch, FaBuilding, FaMapMarkerAlt, FaPhone } from "react-icons/fa";
 import Navbar from "../../Components/Navbar/Navbar";
 import "./Search.scss";
 
@@ -128,40 +122,16 @@ const Search = () => {
                   className="organization-card"
                   onClick={() => handleOrganizationClick(org.id)}
                 >
-                  <div className="organization-icon">
-                    <FaBuilding />
-                  </div>
                   <div className="organization-info">
-                    <div className="organization-details">
-                      <h3>{org.organization_name}</h3>
-                      <p>
-                        <FaPhone className="icon" />
-                        {org.organization_phone || "No phone number provided"}
-                      </p>
-                      <p>
-                        <FaMapMarkerAlt className="icon" />
-                        {org.organization_address || "No address provided"}
-                      </p>
-                    </div>
-                    {org.blood_stocks && org.blood_stocks.length > 0 && (
-                      <div className="blood-stocks">
-                        <h4>
-                          <FaTint className="icon" /> Available Blood Stocks
-                        </h4>
-                        <div className="stock-grid">
-                          {org.blood_stocks.map((stock) => (
-                            <div key={stock.id} className="stock-item">
-                              <span className="blood-group">
-                                {stock.blood_group}
-                              </span>
-                              <span className="quantity">
-                                {stock.quantity} units
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    <h3>{org.organization_name}</h3>
+                    <p>
+                      <FaMapMarkerAlt className="icon" />
+                      {org.organization_address || "No address provided"}
+                    </p>
+                    <p>
+                      <FaPhone className="icon" />
+                      {org.organization_phone || "No phone number provided"}
+                    </p>
                   </div>
                   <div className="view-more">View Details →</div>
                 </div>

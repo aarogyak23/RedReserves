@@ -1,8 +1,8 @@
 .organization-details-container {
-  max-width: 1200px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-  margin-left: 200px;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  margin-left: 150px;
 
   .error-message {
     text-align: center;
@@ -15,146 +15,164 @@
   }
 
   .organization-header {
-    text-align: center;
     margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    .back-button {
+      background: none;
+      border: none;
+      color: #e74c3c;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1rem;
+      padding: 0.5rem;
+      border-radius: 4px;
+      transition: background 0.2s;
+
+      &:hover {
+        background: rgba(231, 76, 60, 0.1);
+      }
+    }
 
     h1 {
-      font-size: 2.5rem;
+      margin: 0;
       color: #2c3e50;
-      margin-bottom: 0.5rem;
+      flex: 1;
+      font-size: 2rem;
+      font-weight: 600;
+      margin-left: 250px;
     }
 
     .organization-status {
       .status-badge {
-        display: inline-block;
+        background: #27ae60;
+        color: white;
         padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 500;
-
-        &.verified {
-          background-color: #e8f5e9;
-          color: #2e7d32;
-        }
+        border-radius: 4px;
+        font-size: 0.875rem;
       }
     }
   }
 
-  .organization-content {
+  .info-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2rem;
-    margin-top: 2rem;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 1rem;
+    width: 1300px;
 
-    .contact-info,
-    .blood-stocks-section {
+    .info-box {
       background: white;
       border-radius: 12px;
-      padding: 2rem;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
+      overflow: hidden;
+      height: 400px;
+      display: flex;
+      flex-direction: column;
 
-    .contact-info {
-      h2 {
-        color: #2c3e50;
-        margin-bottom: 1.5rem;
-        font-size: 1.5rem;
+      .info-box-header {
+        background: #f8f9fa;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-bottom: 1px solid #eee;
+
+        .icon {
+          color: #e74c3c;
+          font-size: 1.25rem;
+        }
+
+        h2 {
+          margin: 0;
+          font-size: 1.25rem;
+          color: #2c3e50;
+        }
       }
 
-      .info-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
+      .info-content {
+        padding: 1rem;
+        overflow-y: auto;
+        flex: 1;
 
         .info-item {
           display: flex;
           align-items: flex-start;
           gap: 1rem;
+          padding: 0.75rem 0;
+          border-bottom: 1px solid #eee;
+
+          &:last-child {
+            border-bottom: none;
+          }
 
           .icon {
-            color: #e74c3c;
-            font-size: 1.2rem;
+            color: rgb(197, 22, 22);
+            font-size: 1.1rem;
             margin-top: 0.25rem;
           }
 
           div {
+            flex: 1;
+
             h3 {
-              font-size: 1rem;
-              color: #7f8c8d;
+              margin: 0;
+              font-size: 0.875rem;
+              color: #666;
               margin-bottom: 0.25rem;
             }
 
             p {
-              font-size: 1.1rem;
+              margin: 0;
               color: #2c3e50;
+              font-size: 1rem;
             }
           }
         }
       }
-    }
 
-    .blood-stocks-section {
-      h2 {
-        color: #2c3e50;
-        margin-bottom: 1.5rem;
-        font-size: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-
-        .icon {
-          color: #e74c3c;
-        }
-      }
-
-      .blood-stocks-grid {
+      .blood-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
 
-        .blood-stock-card {
+        .blood-stock-item {
           background: #f8f9fa;
-          border-radius: 8px;
           padding: 1rem;
+          border-radius: 8px;
           text-align: center;
 
           .blood-group {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #e74c3c;
+            display: block;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: rgb(197, 22, 22);
             margin-bottom: 0.5rem;
           }
 
           .quantity {
+            display: block;
             font-size: 1.1rem;
             color: #2c3e50;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
           }
 
-          .updated-at {
-            font-size: 0.8rem;
-            color: #7f8c8d;
+          .updated {
+            display: block;
+            font-size: 0.75rem;
+            color: #666;
           }
-        }
-
-        .no-stocks {
-          grid-column: 1 / -1;
-          text-align: center;
-          color: #7f8c8d;
-          padding: 2rem;
         }
       }
-    }
-  }
 
-  @media (max-width: 768px) {
-    .organization-content {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-
-    .organization-header h1 {
-      font-size: 2rem;
+      .graph-container {
+        height: 100%;
+        padding: 1rem;
+      }
     }
   }
 }
@@ -174,6 +192,7 @@
   .back-to-search {
     background-color: #007bff;
     color: white;
+
     border: none;
     padding: 0.75rem 1.5rem;
     border-radius: 4px;
@@ -184,5 +203,30 @@
     &:hover {
       background-color: #0056b3;
     }
+  }
+}
+.back-button {
+  left: 0;
+  margin-top: 140px;
+  transform: translateY(-50%);
+  width: 20%;
+  height: 40px;
+
+  background-color: rgb(184, 34, 34);
+  color: white;
+  border: none;
+  padding: 0.75rem 2.6rem;
+  border-radius: 40px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background-color: darkred;
+    width: 20%;
+    padding: 0.75rem 7.6rem;
   }
 }

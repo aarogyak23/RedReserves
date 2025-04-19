@@ -2,6 +2,28 @@ import { useState, useEffect } from "react";
 import axiosInstance from "../../utils/axiosConfig";
 import "./BloodStock.scss";
 import Navbar from "../../Components/Navbar/Navbar";
+import { Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import Footer from "../../Components/Footer/Footer";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const BloodStock = () => {
   const [stocks, setStocks] = useState([]);
@@ -15,6 +37,47 @@ const BloodStock = () => {
   });
 
   const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+
+  const chartData = {
+    labels: stocks.map((stock) => stock.blood_group),
+    datasets: [
+      {
+        label: "Blood Stock Quantity",
+        data: stocks.map((stock) => stock.quantity),
+        fill: false,
+        borderColor: "#ce2029",
+        tension: 0.4,
+        pointBackgroundColor: "#ce2029",
+      },
+    ],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top",
+      },
+      title: {
+        display: true,
+        text: "Blood Stock Levels",
+        font: {
+          size: 16,
+          family: "'Poppins', sans-serif",
+          weight: "600",
+        },
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "Units",
+        },
+      },
+    },
+  };
 
   useEffect(() => {
     fetchStocks();
@@ -118,19 +181,27 @@ const BloodStock = () => {
           </button>
         </div>
 
-        <div className="stocks-grid">
-          {stocks.map((stock) => (
-            <div key={stock.id} className="stock-card">
-              <h3>{stock.blood_group}</h3>
-              <p>Quantity: {stock.quantity} units</p>
-              <button
-                className="edit-btn"
-                onClick={() => handleEditStock(stock)}
-              >
-                Edit
-              </button>
+        <div className="dashboard-content">
+          <div className="stocks-section">
+            <div className="stocks-grid">
+              {stocks.map((stock) => (
+                <div key={stock.id} className="stock-card">
+                  <div className="blood-group">{stock.blood_group}</div>
+                  <div className="quantity">{stock.quantity} units</div>
+                  <button
+                    className="edit-btn"
+                    onClick={() => handleEditStock(stock)}
+                  >
+                    Edit
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+
+          <div className="chart-section">
+            <Line data={chartData} options={chartOptions} />
+          </div>
         </div>
 
         {(editingStock || showAddForm) && (
@@ -193,6 +264,7 @@ const BloodStock = () => {
           </div>
         )}
       </div>
+      <Footer />
     </>
   );
 };

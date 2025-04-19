@@ -93,4 +93,18 @@ class User extends Authenticatable
     {
         return $this->hasMany(BloodStock::class, 'organization_id');
     }
+
+    public function campaignInterests()
+    {
+        return $this->belongsToMany(Campaign::class, 'campaign_user', 'user_id', 'campaign_id')
+            ->withPivot('status')
+            ->withTimestamps();
+    }
+
+    public function interestedCampaigns()
+    {
+        return $this->belongsToMany(Campaign::class, 'campaign_interests')
+            ->withPivot('status')
+            ->withTimestamps();
+    }
 }

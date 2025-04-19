@@ -962,6 +962,8 @@ class AdminController extends Controller
     public function getCampaigns()
     {
         try {
+            \Log::info('Admin: Fetching campaigns with interest counts');
+            
             $campaigns = Campaign::withCount([
                 'interests as interested_count' => function($query) {
                     $query->where('status', 'interested');
@@ -969,17 +971,52 @@ class AdminController extends Controller
                 'interests as not_interested_count' => function($query) {
                     $query->where('status', 'not_interested');
                 }
-            ])->get();
+            ])
+            ->with(['admin', 'interests'])  // Include relationships
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+            \Log::info('Admin: Campaigns fetched successfully', [
+                'count' => $campaigns->count(),
+                'sample_counts' => $campaigns->take(1)->map(function($campaign) {
+                    return [
+                        'id' => $campaign->id,
+                        'interested' => $campaign->interested_count,
+                        'not_interested' => $campaign->not_interested_count
+                    ];
+                })
+            ]);
 
             return response()->json([
                 'status' => true,
-                'data' => $campaigns
+                'data' => $campaigns->map(function($campaign) {
+                    return [
+                        'id' => $campaign->id,
+                        'title' => $campaign->title,
+                        'description' => $campaign->description,
+                        'start_date' => $campaign->start_date,
+                        'end_date' => $campaign->end_date,
+                        'location' => $campaign->location,
+                        'status' => $campaign->status,
+                        'image_path' => $campaign->image_path,
+                        'admin' => $campaign->admin,
+                        'interested_count' => (int) $campaign->interested_count,
+                        'not_interested_count' => (int) $campaign->not_interested_count,
+                        'created_at' => $campaign->created_at,
+                        'updated_at' => $campaign->updated_at
+                    ];
+                })
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching campaigns: ' . $e->getMessage());
+            \Log::error('Admin: Error fetching campaigns', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to fetch campaigns'
+                'message' => 'Failed to fetch campaigns',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -1097,6 +1134,12 @@ class AdminController extends Controller
     public function updateCampaignInterest(Request $request, $id)
     {
         try {
+            \Log::info('Updating campaign interest:', [
+                'campaign_id' => $id,
+                'user_id' => auth()->id(),
+                'status' => $request->status
+            ]);
+
             $validator = Validator::make($request->all(), [
                 'status' => 'required|in:interested,not_interested'
             ]);
@@ -1112,21 +1155,41 @@ class AdminController extends Controller
             $campaign = Campaign::findOrFail($id);
             $user = auth()->user();
 
-            // Update or create the interest status
-            $campaign->interests()->updateOrCreate(
-                ['user_id' => $user->id],
-                ['status' => $request->status]
-            );
+            // Update or create the interest status using sync
+            $campaign->interests()->syncWithoutDetaching([
+                $user->id => ['status' => $request->status]
+            ]);
+
+            // Get updated counts
+            $interestedCount = $campaign->interests()->wherePivot('status', 'interested')->count();
+            $notInterestedCount = $campaign->interests()->wherePivot('status', 'not_interested')->count();
+
+            \Log::info('Campaign interest updated successfully:', [
+                'campaign_id' => $id,
+                'interested_count' => $interestedCount,
+                'not_interested_count' => $notInterestedCount
+            ]);
 
             return response()->json([
                 'status' => true,
-                'message' => 'Interest status updated successfully'
+                'message' => 'Interest status updated successfully',
+                'data' => [
+                    'interested_count' => $interestedCount,
+                    'not_interested_count' => $notInterestedCount
+                ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error updating campaign interest: ' . $e->getMessage());
+            \Log::error('Error updating campaign interest: ' . $e->getMessage(), [
+                'campaign_id' => $id,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'status' => false,
-                'message' => 'Failed to update interest status'
+                'message' => 'Failed to update interest status',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

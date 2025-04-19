@@ -4,7 +4,33 @@ import axiosInstance from "../../utils/axiosConfig";
 import "./OrganizationDetails.scss";
 import Navbar from "../../Components/Navbar/Navbar";
 import LoadingSpinner from "../../Components/LoadingSpinner/LoadingSpinner";
-import { FaPhone, FaMapMarkerAlt, FaEnvelope, FaTint } from "react-icons/fa";
+import {
+  FaPhone,
+  FaMapMarkerAlt,
+  FaEnvelope,
+  FaTint,
+  FaArrowLeft,
+  FaBuilding,
+} from "react-icons/fa";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const OrganizationDetails = () => {
   const [organization, setOrganization] = useState(null);
@@ -55,6 +81,47 @@ const OrganizationDetails = () => {
     navigate("/search");
   };
 
+  const renderBarGraph = () => {
+    if (!organization?.blood_stocks) return null;
+
+    const data = {
+      labels: organization.blood_stocks.map((stock) => stock.blood_group),
+      datasets: [
+        {
+          label: "Blood Units Available",
+          data: organization.blood_stocks.map((stock) => stock.quantity),
+          backgroundColor: "rgb(197, 22, 22)",
+          borderColor: "rgba(231, 76, 60, 1)",
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: "top",
+        },
+        title: {
+          display: false,
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Units",
+          },
+        },
+      },
+    };
+
+    return <Bar data={data} options={options} />;
+  };
+
   if (loading) {
     return (
       <>
@@ -89,16 +156,23 @@ const OrganizationDetails = () => {
       <Navbar />
       <div className="organization-details-container">
         <div className="organization-header">
+          <button onClick={handleBackToSearch} className="back-button">
+            <FaArrowLeft /> Back to Search
+          </button>
           <h1>{organization.organization_name}</h1>
           <div className="organization-status">
             <span className="status-badge verified">Verified Organization</span>
           </div>
         </div>
 
-        <div className="organization-content">
-          <div className="contact-info">
-            <h2>Contact Information</h2>
-            <div className="info-grid">
+        <div className="info-grid">
+          {/* Organization Details Box */}
+          <div className="info-box">
+            <div className="info-box-header">
+              <FaBuilding className="icon" />
+              <h2>Organization Details</h2>
+            </div>
+            <div className="info-content">
               <div className="info-item">
                 <FaPhone className="icon" />
                 <div>
@@ -123,25 +197,33 @@ const OrganizationDetails = () => {
             </div>
           </div>
 
-          <div className="blood-stocks-section">
-            <h2>
-              <FaTint className="icon" /> Available Blood Stocks
-            </h2>
-            <div className="blood-stocks-grid">
-              {organization.blood_stocks?.length > 0 ? (
-                organization.blood_stocks.map((stock) => (
-                  <div key={stock.id} className="blood-stock-card">
-                    <div className="blood-group">{stock.blood_group}</div>
-                    <div className="quantity">{stock.quantity} units</div>
-                    <div className="updated-at">
-                      Last updated:{" "}
-                      {new Date(stock.updated_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="no-stocks">No blood stocks available</p>
-              )}
+          {/* Blood Stock Box */}
+          <div className="info-box">
+            <div className="info-box-header">
+              <FaTint className="icon" />
+              <h2>Blood Stock Levels</h2>
+            </div>
+            <div className="info-content blood-grid">
+              {organization.blood_stocks?.map((stock) => (
+                <div key={stock.id} className="blood-stock-item">
+                  <span className="blood-group">{stock.blood_group}</span>
+                  <span className="quantity">{stock.quantity} units</span>
+                  <span className="updated">
+                    Updated: {new Date(stock.updated_at).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Blood Stock Graph Box */}
+          <div className="info-box">
+            <div className="info-box-header">
+              <FaTint className="icon" />
+              <h2>Stock Visualization</h2>
+            </div>
+            <div className="info-content graph-container">
+              {renderBarGraph()}
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Campaign extends Model
 {
@@ -39,6 +40,8 @@ class Campaign extends Model
 
     public function interests()
     {
-        return $this->hasMany(CampaignInterest::class);
+        return $this->belongsToMany(User::class, 'campaign_user', 'campaign_id', 'user_id')
+            ->withPivot('status')
+            ->withTimestamps();
     }
 } 

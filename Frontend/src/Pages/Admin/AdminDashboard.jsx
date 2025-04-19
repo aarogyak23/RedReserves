@@ -12,11 +12,30 @@ import {
   FaHandHoldingHeart,
   FaCalendarAlt,
 } from "react-icons/fa";
-import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { Pie, Line } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+} from "chart.js";
 import "./AdminDashboard.scss";
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title
+);
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -49,6 +68,10 @@ const AdminDashboard = () => {
     organizations: 0,
     individuals: 0,
   });
+  const [bloodRequestsChartData, setBloodRequestsChartData] = useState({
+    labels: [],
+    datasets: [],
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -79,8 +102,81 @@ const AdminDashboard = () => {
       }
     };
 
+    // Expose the campaigns update function to the window object
+    window.adminDashboardCampaignsUpdate = (campaignsData) => {
+      console.log(
+        "Admin dashboard campaigns update called with data:",
+        campaignsData
+      );
+      if (Array.isArray(campaignsData)) {
+        // Set campaigns with their interest counts from the response
+        const campaignsWithInterests = campaignsData.map((campaign) => ({
+          ...campaign,
+          interested_count: campaign.interested_count || 0,
+          not_interested_count: campaign.not_interested_count || 0,
+        }));
+        console.log(
+          "Setting admin dashboard campaigns directly:",
+          campaignsWithInterests
+        );
+        setCampaigns(campaignsWithInterests);
+      } else {
+        console.error(
+          "Invalid campaigns data received for dashboard:",
+          campaignsData
+        );
+      }
+    };
+
     initializeData();
+
+    // Cleanup on unmount
+    return () => {
+      // Remove the function from the window object
+      delete window.adminDashboardCampaignsUpdate;
+    };
   }, [navigate]);
+
+  // Add polling for campaign updates when campaigns tab is active
+  useEffect(() => {
+    let pollInterval;
+
+    const pollCampaignData = async () => {
+      if (selectedCard === "campaigns") {
+        try {
+          const token = localStorage.getItem("adminToken");
+          if (!token) return;
+
+          const response = await axios.get(`${API_URL}/api/admin/campaigns`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (response.data?.status) {
+            const campaignsData = response.data.data || [];
+            setCampaigns(campaignsData);
+          }
+        } catch (error) {
+          console.error("Error polling campaign data:", error);
+        }
+      }
+    };
+
+    if (selectedCard === "campaigns") {
+      // Initial poll
+      pollCampaignData();
+      // Set up polling every 3 seconds
+      pollInterval = setInterval(pollCampaignData, 3000);
+    }
+
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [selectedCard]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -124,7 +220,16 @@ const AdminDashboard = () => {
         setDonorSubmissions(donorSubmissionsRes.data.data || []);
       }
       if (campaignsRes.data?.status) {
-        setCampaigns(campaignsRes.data.data || []);
+        const campaignsData = campaignsRes.data.data || [];
+
+        // Set campaigns with their interest counts from the response
+        const campaignsWithInterests = campaignsData.map((campaign) => ({
+          ...campaign,
+          interested_count: campaign.interested_count || 0,
+          not_interested_count: campaign.not_interested_count || 0,
+        }));
+
+        setCampaigns(campaignsWithInterests);
       }
     } catch (error) {
       console.error("Error fetching data:", error.response || error);
@@ -425,12 +530,21 @@ const AdminDashboard = () => {
       <div className="campaigns-section">
         <div className="section-header">
           <h2>Campaigns</h2>
-          <button
-            className="add-campaign-btn"
-            onClick={() => setShowCampaignForm(true)}
-          >
-            Add New Campaign
-          </button>
+          <div className="header-actions">
+            <button
+              className="refresh-btn"
+              onClick={fetchData}
+              title="Manually refresh data"
+            >
+              Refresh Data
+            </button>
+            <button
+              className="add-campaign-btn"
+              onClick={() => setShowCampaignForm(true)}
+            >
+              Add New Campaign
+            </button>
+          </div>
         </div>
         <div className="campaigns-list">
           {campaigns.map((campaign) => (
@@ -563,6 +677,80 @@ const AdminDashboard = () => {
           size: 16,
           family: "'Poppins', sans-serif",
           weight: "600",
+        },
+      },
+    },
+  };
+
+  const processBloodRequestsData = (requests) => {
+    // Get the last 15 days
+    const last15Days = [...Array(15)]
+      .map((_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        return date;
+      })
+      .reverse();
+
+    // Format dates for labels
+    const labels = last15Days.map((date) => date.toLocaleDateString());
+
+    // Count requests for each day
+    const requestCounts = last15Days.map((date) => {
+      return requests.filter((request) => {
+        const requestDate = new Date(request.created_at);
+        return requestDate.toDateString() === date.toDateString();
+      }).length;
+    });
+
+    setBloodRequestsChartData({
+      labels,
+      datasets: [
+        {
+          label: "Blood Requests",
+          data: requestCounts,
+          fill: false,
+          borderColor: "#e74c3c",
+          tension: 0.4,
+          pointBackgroundColor: "#e74c3c",
+        },
+      ],
+    });
+  };
+
+  useEffect(() => {
+    if (bloodRequests.length > 0) {
+      processBloodRequestsData(bloodRequests);
+    }
+  }, [bloodRequests]);
+
+  const lineChartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          font: {
+            size: 14,
+            family: "'Poppins', sans-serif",
+          },
+        },
+      },
+      title: {
+        display: true,
+        text: "Blood Requests - Last 15 Days",
+        font: {
+          size: 16,
+          family: "'Poppins', sans-serif",
+          weight: "600",
+        },
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
         },
       },
     },
@@ -706,59 +894,12 @@ const AdminDashboard = () => {
                     <Pie data={pieChartData} options={pieChartOptions} />
                   </div>
                 </div>
-                <div className="recent-activity">
-                  <h2>Recent Activity</h2>
-                  <div className="activity-list">
-                    {/* Add recent blood requests */}
-                    <div className="activity-section">
-                      <h3>Latest Blood Requests</h3>
-                      <div className="table-container">
-                        <table>
-                          <thead>
-                            <tr>
-                              <th>Requester</th>
-                              <th>Blood Group</th>
-                              <th>Status</th>
-                              <th>Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {bloodRequests.slice(0, 5).map((request) => (
-                              <tr key={request.id}>
-                                <td>
-                                  <div className="user-info">
-                                    <div className="avatar">
-                                      {request.first_name[0]}
-                                      {request.last_name[0]}
-                                    </div>
-                                    <div className="name">
-                                      {request.first_name} {request.last_name}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td>
-                                  <span className="status-badge pending">
-                                    {request.blood_group}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span
-                                    className={`status-badge ${request.status}`}
-                                  >
-                                    {request.status}
-                                  </span>
-                                </td>
-                                <td>
-                                  {new Date(
-                                    request.created_at
-                                  ).toLocaleDateString()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                <div className="chart-container">
+                  <div className="line-chart">
+                    <Line
+                      data={bloodRequestsChartData}
+                      options={lineChartOptions}
+                    />
                   </div>
                 </div>
               </div>

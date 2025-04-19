@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaBell, FaSpinner } from "react-icons/fa";
 import "./Notifications.scss";
@@ -11,6 +12,7 @@ export const Notifications = () => {
   const [error, setError] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchNotifications();
@@ -46,7 +48,7 @@ export const Notifications = () => {
       console.log("Notifications received:", response.data);
 
       // Parse the data field for each notification
-      const parsedNotifications = response.data.map((notification) => {
+      let parsedNotifications = response.data.map((notification) => {
         let parsedData = notification.data;
         if (typeof notification.data === "string") {
           try {
@@ -61,6 +63,121 @@ export const Notifications = () => {
           data: parsedData,
         };
       });
+
+      // For donor notifications, check their current status
+      const donorNotifications = parsedNotifications.filter(
+        (n) => n.type === "App\\Notifications\\NewDonorNotification"
+      );
+
+      // Create a map to store donor statuses and their notifications
+      const donorStatuses = new Map();
+      const donorNotificationMap = new Map();
+
+      // Track processed request IDs to avoid duplicate API calls
+      const processedRequests = new Set();
+
+      // First, group notifications by donor
+      donorNotifications.forEach((notification) => {
+        const data = notification.data;
+        const donorId = data.donor_id || data.id;
+        const requestId = data.request_id || data.blood_request_id;
+        const key = `${requestId}-${donorId}`;
+
+        if (!donorNotificationMap.has(key)) {
+          donorNotificationMap.set(key, []);
+        }
+        donorNotificationMap.get(key).push(notification);
+      });
+
+      // Fetch current status for all donors
+      for (const [key] of donorNotificationMap) {
+        const [requestId, donorId] = key.split("-");
+
+        if (!processedRequests.has(requestId)) {
+          try {
+            processedRequests.add(requestId);
+            const donorResponse = await axios.get(
+              `${API_URL}/api/blood-requests/${requestId}/donors`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+
+            // Process all donors for this request
+            if (Array.isArray(donorResponse.data)) {
+              donorResponse.data.forEach((donor) => {
+                const dId = donor.id || donor.donor_id;
+                if (dId) {
+                  donorStatuses.set(
+                    `${requestId}-${dId}`,
+                    donor.status || "pending"
+                  );
+                }
+              });
+            }
+          } catch (error) {
+            console.warn(`Could not fetch status for donor ${donorId}:`, error);
+            // If we can't fetch the status, don't show any notifications for this donor
+            donorStatuses.set(key, "error");
+          }
+        }
+      }
+
+      // Filter and update notifications
+      parsedNotifications = parsedNotifications.filter((notification) => {
+        if (notification.type === "App\\Notifications\\NewDonorNotification") {
+          const data = notification.data;
+          const donorId = data.donor_id || data.id;
+          const requestId = data.request_id || data.blood_request_id;
+          const key = `${requestId}-${donorId}`;
+          const status = donorStatuses.get(key);
+
+          // If we couldn't get the status or there was an error, remove the notification
+          if (!status || status === "error") return false;
+
+          // Get all notifications for this donor
+          const donorNotifications = donorNotificationMap.get(key) || [];
+
+          // Sort notifications by date, newest first
+          donorNotifications.sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+          );
+
+          // If the donor has been accepted or rejected
+          if (status === "accepted" || status === "rejected") {
+            // Only keep the newest notification and update its content
+            if (notification === donorNotifications[0]) {
+              notification.data = {
+                ...data,
+                status: status,
+                actionTaken: true,
+                title:
+                  status === "accepted"
+                    ? "Donation Offer Approved"
+                    : "Donation Offer Rejected",
+                message:
+                  status === "accepted"
+                    ? `You have approved ${data.name}'s offer to donate blood.`
+                    : `You have declined ${data.name}'s offer to donate blood.`,
+                actions: [], // Remove all actions
+              };
+              return true;
+            }
+            return false;
+          }
+
+          // For pending status, only show if it's actually pending
+          return status === "pending";
+        }
+        return true;
+      });
+
+      // Sort notifications by creation date, newest first
+      parsedNotifications.sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
 
       // Count unread notifications
       const unreadCount = parsedNotifications.filter((n) => !n.read_at).length;
@@ -115,9 +232,25 @@ export const Notifications = () => {
       const token =
         localStorage.getItem("token") || localStorage.getItem("adminToken");
       console.log("Handling donor action:", action);
+      console.log("Full notification data:", notification);
+      console.log("Notification type:", notification.type);
+      console.log("Action data:", notification.data);
+
+      if (action.method === "GET") {
+        // For view details, construct the URL correctly
+        const data = notification.data;
+        const requestId = data.request_id || data.blood_request_id;
+        const donorId = data.donor_id || data.id;
+        console.log("Parsed IDs:", { requestId, donorId });
+
+        const frontendUrl = `/blood-requests/${requestId}/donors/${donorId}`;
+        console.log("Navigating to:", frontendUrl);
+        navigate(frontendUrl);
+        setIsOpen(false);
+        return;
+      }
 
       if (action.method === "PUT" || action.method === "POST") {
-        // Remove /api prefix if present
         const url = action.url.startsWith("/api/")
           ? action.url.substring(4)
           : action.url;
@@ -144,17 +277,69 @@ export const Notifications = () => {
 
         console.log("Action response:", response.data);
 
-        // Mark notification as read
-        await markAsRead(notification.id);
-
-        // Remove this notification from the list
+        // Update notifications immediately after action
         setNotifications((prevNotifications) =>
-          prevNotifications.filter((n) => n.id !== notification.id)
+          prevNotifications
+            .map((n) => {
+              // Update the status for all notifications related to this donor
+              if (
+                n.type === "App\\Notifications\\NewDonorNotification" &&
+                ((n.data.donor_id &&
+                  n.data.donor_id === notification.data.donor_id) ||
+                  (n.data.id && n.data.id === notification.data.id))
+              ) {
+                const updatedData = {
+                  ...n.data,
+                  status: action.data.status,
+                  actionTaken: true,
+                  title:
+                    action.data.status === "accepted"
+                      ? "Donation Offer Approved"
+                      : "Donation Offer Rejected",
+                  message:
+                    action.data.status === "accepted"
+                      ? `You have approved ${n.data.name}'s offer to donate blood.`
+                      : `You have declined ${n.data.name}'s offer to donate blood.`,
+                  actions: [], // Remove all actions
+                };
+                return {
+                  ...n,
+                  data: updatedData,
+                  read_at: null, // Mark as unread so the user sees the status change
+                };
+              }
+              return n;
+            })
+            .filter((n) => {
+              // Remove duplicate "New Donor Available" notifications for this donor
+              if (n.type === "App\\Notifications\\NewDonorNotification") {
+                const donorId = n.data.donor_id || n.data.id;
+                const notificationDonorId =
+                  notification.data.donor_id || notification.data.id;
+                const isPendingNotification =
+                  !n.data.actionTaken && n.data.status === "pending";
+                const isSameDonor = donorId === notificationDonorId;
+
+                // Keep the notification if:
+                // 1. It's not for the same donor, OR
+                // 2. It's for the same donor but it's the status update notification
+                return !isSameDonor || !isPendingNotification;
+              }
+              return true;
+            })
         );
 
-        // Close the dropdown
-        setIsOpen(false);
+        // Fetch updated notifications to ensure we have the latest state
+        await fetchNotifications();
+
+        // Show success message
+        alert(
+          response.data.message ||
+            `Donor has been ${action.data.status} successfully`
+        );
       }
+
+      setIsOpen(false);
     } catch (error) {
       console.error("Error handling donor action:", error);
       if (error.response) {
@@ -172,23 +357,151 @@ export const Notifications = () => {
   const handleNotificationClick = async (notification) => {
     try {
       console.log("Clicking notification:", notification);
+      const data = notification.data;
+      const currentUser = JSON.parse(localStorage.getItem("user"));
+      const isRequester = data.requester_id === currentUser.id;
 
       // Mark notification as read
       await markAsRead(notification.id);
 
-      // Update local state to reflect the notification is read
-      setNotifications((prevNotifications) =>
-        prevNotifications.map((n) =>
-          n.id === notification.id
-            ? { ...n, read_at: new Date().toISOString() }
-            : n
-        )
-      );
+      // For donor notifications
+      if (notification.type === "App\\Notifications\\NewDonorNotification") {
+        const status = data.status;
 
-      // Don't navigate, just close the notification panel
+        // If the notification is for accepted/rejected status, just mark as read and return
+        if (status === "accepted" || status === "rejected") {
+          console.log(`${status} notification clicked - marking as read only`);
+          setIsOpen(false);
+          return;
+        }
+
+        // Only navigate for pending donor notifications for requesters
+        if (isRequester && !data.actionTaken && status === "pending") {
+          const requestId = data.request_id || data.blood_request_id;
+          const donorId = data.donor_id || data.id;
+
+          if (requestId && donorId) {
+            const frontendUrl = `/blood-requests/${requestId}/donors/${donorId}`;
+            console.log(
+              "Requester viewing pending donor - navigating to:",
+              frontendUrl
+            );
+            navigate(frontendUrl);
+            setIsOpen(false);
+            return;
+          }
+        }
+      }
+
+      // For other notifications that should navigate
+      const formattedNotification = formatNotificationMessage(notification);
+      if (
+        formattedNotification.url &&
+        (!notification.data.status || notification.data.status === "pending")
+      ) {
+        const frontendUrl = formattedNotification.url.replace("/api/", "/");
+        console.log("Navigating to:", frontendUrl);
+        navigate(frontendUrl);
+      }
       setIsOpen(false);
     } catch (error) {
       console.error("Error handling notification click:", error);
+    }
+  };
+
+  const formatNotificationMessage = (notification) => {
+    const data = notification.data;
+    console.log("Formatting notification data:", data);
+    let requestId, donorId, title, message;
+    const currentUser = JSON.parse(localStorage.getItem("user"));
+    const isRequester = data.requester_id === currentUser.id;
+    const isDonor =
+      data.donor_id === currentUser.id || data.id === currentUser.id;
+    const isPending = data.status === "pending" || !data.status;
+
+    switch (notification.type) {
+      case "App\\Notifications\\NewDonorNotification":
+        requestId = data.request_id || data.blood_request_id;
+        donorId = data.donor_id || data.id;
+
+        // Format the title based on the status and user role
+        if (data.status === "accepted") {
+          title = isDonor
+            ? "Donation Offer Approved"
+            : "Donation Offer Approved";
+          message = isDonor
+            ? `Your donation offer has been approved! Thank you for your generosity.`
+            : `You have approved ${data.name}'s offer to donate blood.`;
+        } else if (data.status === "rejected") {
+          title = isDonor
+            ? "Donation Offer Rejected"
+            : "Donation Offer Rejected";
+          message = isDonor
+            ? `Your donation offer has been declined.`
+            : `You have declined ${data.name}'s offer to donate blood.`;
+        } else {
+          title = "New Donor Available";
+          message = isRequester
+            ? `${data.name} has volunteered to donate ${data.blood_group} blood for your request`
+            : `You have volunteered to donate ${data.blood_group} blood for request #${requestId}`;
+        }
+
+        return {
+          title: title,
+          message: message,
+          status: data.status,
+          actionTaken: data.actionTaken,
+          // Only include URL for pending notifications to requesters
+          url:
+            isPending && isRequester
+              ? `/blood-requests/${requestId}/donors/${donorId}`
+              : null,
+          // Only include actions for pending notifications to requesters
+          actions:
+            isPending && isRequester
+              ? [
+                  {
+                    label: "View Details",
+                    method: "GET",
+                    url: `/blood-requests/${requestId}/donors/${donorId}`,
+                  },
+                  {
+                    label: "Accept Donor",
+                    method: "PUT",
+                    url: `/blood-requests/${requestId}/donors/${donorId}/accept`,
+                    data: { status: "accepted" },
+                  },
+                  {
+                    label: "Decline Donor",
+                    method: "PUT",
+                    url: `/blood-requests/${requestId}/donors/${donorId}/reject`,
+                    data: { status: "rejected" },
+                  },
+                ]
+              : [],
+          icon: "donor",
+        };
+      case "App\\Notifications\\BloodRequestApproved":
+        return {
+          title: "Blood Request Approved",
+          message: data.message,
+          url: "/blood-requests",
+          icon: "approved",
+        };
+      case "App\\Notifications\\NewCampaignNotification":
+        return {
+          title: data.title || "New Campaign",
+          message: data.message,
+          url: "/campaigns",
+          icon: "campaign",
+        };
+      default:
+        return {
+          title: "Notification",
+          message: data.message,
+          url: data.url ? data.url.replace("/api/", "/") : "/",
+          icon: "default",
+        };
     }
   };
 
@@ -239,7 +552,7 @@ export const Notifications = () => {
                   key={notification.id}
                   className={`notification-item ${
                     !notification.read_at ? "unread" : ""
-                  }`}
+                  } ${notification.data.actionTaken ? "action-taken" : ""}`}
                   onClick={() => handleNotificationClick(notification)}
                   role="button"
                   tabIndex={0}
@@ -253,6 +566,16 @@ export const Notifications = () => {
                     <h4>{notification.data.title}</h4>
                     <p className="notification-message">
                       {notification.data.message}
+                      {notification.data.actionTaken && (
+                        <span className="action-status">
+                          {" "}
+                          (
+                          {notification.data.status === "accepted"
+                            ? "Accepted"
+                            : "Declined"}
+                          )
+                        </span>
+                      )}
                     </p>
                     <span className="notification-time">
                       {formatDate(notification.created_at)}
@@ -260,7 +583,8 @@ export const Notifications = () => {
                   </div>
                   {notification.type ===
                     "App\\Notifications\\NewDonorNotification" &&
-                    notification.data.actions?.length > 0 && (
+                    notification.data.actions?.length > 0 &&
+                    !notification.data.actionTaken && (
                       <div className="notification-actions">
                         {notification.data.actions.map((action, index) => (
                           <button
@@ -272,6 +596,7 @@ export const Notifications = () => {
                               e.stopPropagation();
                               handleDonorAction(action, notification);
                             }}
+                            disabled={notification.data.actionTaken}
                           >
                             {action.label}
                           </button>

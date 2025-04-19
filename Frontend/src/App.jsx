@@ -12,6 +12,7 @@ import AdminDashboard from "./Pages/Admin/AdminDashboard";
 import Search from "./Pages/Search/Search";
 import UserProfile from "./Pages/User/UserProfile";
 import BloodRequests from "./Pages/BloodRequests/BloodRequests";
+import DonorDetails from "./Pages/BloodRequests/DonorDetails";
 import Campaigns from "./Pages/Campaigns/Campaigns";
 import AdminCampaigns from "./Pages/Admin/AdminCampaigns";
 import BloodStock from "./Pages/BloodStock/BloodStock";
@@ -75,6 +76,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <BloodRequests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/blood-requests/:requestId/donors/:donorId"
+            element={
+              <ProtectedRoute>
+                <DonorDetails />
               </ProtectedRoute>
             }
           />

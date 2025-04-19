@@ -14,11 +14,86 @@ class CampaignController extends Controller
 {
     public function index()
     {
-        $campaigns = Campaign::with('admin')
+        try {
+            $user = Auth::user();
+            $campaigns = Campaign::with(['admin'])
+            ->withCount([
+                'interests as interested_count' => function($query) {
+                    $query->where('status', 'interested');
+                },
+                'interests as not_interested_count' => function($query) {
+                    $query->where('status', 'not_interested');
+                }
+            ])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function($campaign) use ($user) {
+                // Get the user's interest status for this campaign
+                $userInterest = $campaign->interests()
+                    ->where('user_id', $user->id)
+                    ->first();
 
-        return response()->json($campaigns);
+                return [
+                    'id' => $campaign->id,
+                    'title' => $campaign->title,
+                    'description' => $campaign->description,
+                    'start_date' => $campaign->start_date,
+                    'end_date' => $campaign->end_date,
+                    'location' => $campaign->location,
+                    'status' => $campaign->status,
+                    'image_path' => $campaign->image_path,
+                    'admin' => $campaign->admin,
+                    'user_interest' => $userInterest ? $userInterest->pivot->status : null,
+                    'interested_count' => (int)$campaign->interested_count,
+                    'not_interested_count' => (int)$campaign->not_interested_count,
+                    'created_at' => $campaign->created_at,
+                    'updated_at' => $campaign->updated_at
+                ];
+            });
+
+            return response()->json([
+                'status' => true,
+                'data' => $campaigns
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching campaigns:', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch campaigns',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getUserInterests()
+    {
+        try {
+            $user = Auth::user();
+            $interests = $user->campaignInterests()
+                ->with('campaign')
+                ->get()
+                ->map(function($interest) {
+                    return [
+                        'campaign_id' => $interest->campaign_id,
+                        'status' => $interest->status
+                    ];
+                });
+
+            return response()->json([
+                'status' => true,
+                'data' => $interests
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Failed to fetch campaign interests',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(Request $request)
@@ -78,8 +153,23 @@ class CampaignController extends Controller
             $user->id => ['status' => $request->status]
         ]);
 
+        // Get updated counts
+        $campaign->loadCount([
+            'interests as interested_count' => function($query) {
+                $query->where('status', 'interested');
+            },
+            'interests as not_interested_count' => function($query) {
+                $query->where('status', 'not_interested');
+            }
+        ]);
+
         return response()->json([
-            'message' => 'Interest status updated successfully'
+            'status' => true,
+            'message' => 'Interest status updated successfully',
+            'data' => [
+                'interested_count' => $campaign->interested_count,
+                'not_interested_count' => $campaign->not_interested_count
+            ]
         ]);
     }
 
